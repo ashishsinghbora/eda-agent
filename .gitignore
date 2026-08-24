@@ -10,6 +10,8 @@ venv/
 
 # Simulation dumps & EDA logs
 sim_build/
+sim_build_*/
+*.vvp
 *.vcd
 *.fst
 *.xml
