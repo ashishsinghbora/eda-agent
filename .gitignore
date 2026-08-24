@@ -1,0 +1,17 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+
+# Simulation dumps & EDA logs
+sim_build/
+*.vcd
+*.fst
+*.xml
+results.xml
+*.log
