@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EDA-Agent | AI Hardware Verification & Diagnostic Studio</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              900: '#14532d',
+            },
+            eda: {
+              bg: '#0B0F19',
+              sidebar: '#111827',
+              card: '#1F2937',
+              border: '#374151',
+              accent: '#3B82F6',
+              purple: '#8B5CF6',
+              amber: '#F59E0B',
+              rose: '#F43F5E',
+              emerald: '#10B981',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- WaveDrom Script & Skin -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/wavedrom/3.1.0/skins/default.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/wavedrom/3.1.0/wavedrom.min.js"></script>
+  <!-- Prism.js Syntax Highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-verilog.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    .code-editor { font-family: "Fira Code", "Courier New", monospace; tab-size: 4; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #111827; }
+    ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #4B5563; }
+    .pulse-green { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+  </style>
+</head>
+<body class="bg-eda-bg text-gray-100 h-screen flex flex-col overflow-hidden select-none">
+
+  <!-- TOP APP BAR -->
+  <header class="h-14 bg-eda-sidebar border-b border-eda-border px-4 flex items-center justify-between shrink-0">
+    <div class="flex items-center space-x-3">
+      <div class="p-2 bg-brand-600 rounded-lg text-white shadow-lg shadow-brand-500/20">
+        <i data-lucide="cpu" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <div class="flex items-center space-x-2">
+          <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">EDA-Agent</span>
+          <span class="text-xs px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono">v0.1.0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Status & Quick Actions -->
+    <div class="flex items-center space-x-3">
+      <!-- LLM Pill -->
+      <div class="flex items-center space-x-2 px-3 py-1.5 bg-eda-card rounded-full border border-eda-border text-xs">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-green"></span>
+        <span id="header-llm-label" class="font-medium text-gray-300">Ollama: deepseek-coder-v2:16b</span>
+        <span class="text-gray-500 font-mono text-[10px]">Local Airgap</span>
+      </div>
+
+      <!-- Action Buttons -->
+      <button id="btn-generate" onclick="generateTestbench()" class="flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-md text-xs font-semibold shadow transition">
+        <i data-lucide="flask-conical" class="w-4 h-4"></i>
+        <span>Synthesize TB</span>
+      </button>
+
+      <button id="btn-verify" onclick="runVerification()" class="flex items-center space-x-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-md text-xs font-semibold shadow-lg shadow-emerald-600/20 transition">
+        <i data-lucide="play" class="w-4 h-4"></i>
+        <span>Run Verification</span>
+      </button>
+
+      <button onclick="exportTestbench()" class="p-1.5 text-gray-400 hover:text-white hover:bg-eda-card rounded transition" title="Export Testbench">
+        <i data-lucide="download" class="w-4 h-4"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN 4-PANE WORKSPACE -->
+  <div class="flex-1 flex overflow-hidden">
+
+    <!-- LEFT SIDEBAR: Controls & Navigator (Width: 320px) -->
+    <aside class="w-80 bg-eda-sidebar border-r border-eda-border flex flex-col shrink-0 overflow-y-auto">
+      
+      <!-- Module Navigator -->
+      <div class="p-4 border-b border-eda-border">
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center space-x-1">
+            <i data-lucide="folder-code" class="w-3.5 h-3.5 text-cyan-400"></i>
+            <span>Target RTL Module</span>
+          </label>
+          <span class="text-[10px] text-gray-500 font-mono" id="port-count-badge">8 ports</span>
+        </div>
+        <select id="select-module" onchange="loadSelectedModule()" class="w-full bg-eda-card border border-eda-border rounded-md px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-brand-500 font-mono">
+          <option value="alu_8bit.v">alu_8bit.v (8-bit ALU)</option>
+          <option value="fifo_async.v">fifo_async.v (Async FIFO)</option>
+          <option value="custom">Custom RTL Buffer</option>
+        </select>
+      </div>
+
+      <!-- Natural Language Timing Specification -->
+      <div class="p-4 border-b border-eda-border flex-1 flex flex-col">
+        <label class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2 flex items-center space-x-1">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-yellow-400"></i>
+          <span>Natural Language Timing Spec</span>
+        </label>
+        <textarea id="nl-spec-input" rows="4" placeholder="e.g., 'ready drops low when valid is asserted and fifo is full' or 'opcode 0 is ADD with zero flag'" class="w-full bg-eda-card border border-eda-border rounded-md p-2.5 text-xs text-gray-200 focus:outline-none focus:border-cyan-500 placeholder-gray-500 resize-none font-mono"></textarea>
+        
+        <!-- Preset Prompt Chips -->
+        <div class="mt-2.5 flex flex-wrap gap-1.5">
+          <button onclick="setSpecPreset('ready drops low when valid is asserted and fifo is full')" class="text-[10px] px-2 py-1 bg-eda-card hover:bg-gray-700 text-gray-300 rounded border border-eda-border transition">
+            FIFO Ready Drop
+          </button>
+          <button onclick="setSpecPreset('ack must assert 2 cycles after req rises')" class="text-[10px] px-2 py-1 bg-eda-card hover:bg-gray-700 text-gray-300 rounded border border-eda-border transition">
+            Multi-Cycle Ack
+          </button>
+          <button onclick="setSpecPreset('grant must be one-hot encoded')" class="text-[10px] px-2 py-1 bg-eda-card hover:bg-gray-700 text-gray-300 rounded border border-eda-border transition">
+            One-Hot Grant
+          </button>
+          <button onclick="setSpecPreset('verify all 8 opcodes across randomized vectors')" class="text-[10px] px-2 py-1 bg-eda-card hover:bg-gray-700 text-gray-300 rounded border border-eda-border transition">
+            ALU Op Exhaustive
+          </button>
+        </div>
+      </div>
+
+      <!-- 1-Click Action Hub -->
+      <div class="p-4 space-y-2 border-b border-eda-border">
+        <label class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1 block">Verification Actions</label>
+        
+        <button onclick="autoFixRTL()" class="w-full flex items-center justify-between px-3 py-2 bg-eda-card hover:bg-gray-700 text-purple-300 rounded border border-purple-900/50 text-xs font-medium transition">
+          <span class="flex items-center space-x-2">
+            <i data-lucide="wrench" class="w-4 h-4 text-purple-400"></i>
+            <span>Auto-Fix RTL Bug</span>
+          </span>
+          <span class="text-[10px] bg-purple-950 px-1.5 py-0.5 rounded text-purple-400 font-mono">Loop</span>
+        </button>
+
+        <button onclick="explainFailure()" class="w-full flex items-center justify-between px-3 py-2 bg-eda-card hover:bg-gray-700 text-amber-300 rounded border border-amber-900/50 text-xs font-medium transition">
+          <span class="flex items-center space-x-2">
+            <i data-lucide="help-circle" class="w-4 h-4 text-amber-400"></i>
+            <span>Explain Failure in Simple Terms</span>
+          </span>
+          <span class="text-[10px] bg-amber-950 px-1.5 py-0.5 rounded text-amber-400 font-mono">Diag</span>
+        </button>
+
+        <button onclick="analyzeTiming()" class="w-full flex items-center justify-between px-3 py-2 bg-eda-card hover:bg-gray-700 text-rose-300 rounded border border-rose-900/50 text-xs font-medium transition">
+          <span class="flex items-center space-x-2">
+            <i data-lucide="clock" class="w-4 h-4 text-rose-400"></i>
+            <span>Analyze Static Timing (STA)</span>
+          </span>
+          <span class="text-[10px] bg-rose-950 px-1.5 py-0.5 rounded text-rose-400 font-mono">WNS</span>
+        </button>
+      </div>
+
+      <!-- LLM Configuration Mini Panel -->
+      <div class="p-4 mt-auto bg-gray-900/50">
+        <div class="flex items-center justify-between text-xs text-gray-400 mb-2">
+          <span class="font-bold flex items-center space-x-1">
+            <i data-lucide="settings" class="w-3.5 h-3.5"></i>
+            <span>Inference Backend</span>
+          </span>
+          <span id="backend-status-pill" class="text-[10px] text-emerald-400">🟢 Ready</span>
+        </div>
+        <select id="llm-provider-select" onchange="updateProviderConfig()" class="w-full bg-eda-card border border-eda-border rounded px-2.5 py-1.5 text-xs text-gray-200 font-mono mb-2">
+          <option value="ollama">Ollama (Local)</option>
+          <option value="openai_compatible">vLLM / Custom Local</option>
+          <option value="gemini">Google Gemini</option>
+          <option value="openai">OpenAI (Cloud)</option>
+          <option value="rule_based">Built-in Rule Engine</option>
+        </select>
+        <div class="text-[10px] text-gray-500 font-mono truncate" id="base-url-label">Endpoint: http://localhost:11434/v1</div>
+      </div>
+    </aside>
+
+    <!-- CENTER & RIGHT: Code Editors & Hardware Diagram (Flex-1) -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+      
+      <!-- UPPER SPLIT: Dual Code Editors (Left) & Block Diagram (Right) -->
+      <div class="flex-1 flex overflow-hidden border-b border-eda-border">
+        
+        <!-- LEFT EDITOR: Verilog RTL -->
+        <div class="flex-1 border-r border-eda-border flex flex-col overflow-hidden">
+          <div class="h-9 bg-eda-sidebar border-b border-eda-border px-3 flex items-center justify-between text-xs">
+            <div class="flex items-center space-x-2 font-mono text-cyan-400 font-semibold">
+              <i data-lucide="file-code-2" class="w-4 h-4"></i>
+              <span id="rtl-tab-title">alu_8bit.v</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">Verilog RTL</span>
+            </div>
+            <button onclick="parseRTL()" class="text-[10px] text-gray-400 hover:text-white px-2 py-0.5 bg-eda-card rounded border border-eda-border transition">
+              Refresh Diagram
+            </button>
+          </div>
+          <div class="flex-1 p-2 bg-[#1e1e1e] overflow-auto">
+            <textarea id="rtl-editor" oninput="parseRTL()" class="w-full h-full bg-transparent text-gray-100 code-editor text-xs focus:outline-none resize-none" spellcheck="false"></textarea>
+          </div>
+        </div>
+
+        <!-- RIGHT EDITOR: Synthesized Cocotb Testbench / SVA -->
+        <div class="flex-1 border-r border-eda-border flex flex-col overflow-hidden">
+          <div class="h-9 bg-eda-sidebar border-b border-eda-border px-3 flex items-center justify-between text-xs">
+            <div class="flex items-center space-x-1 font-mono">
+              <button id="tab-tb" onclick="switchRightTab('tb')" class="px-2.5 py-1 rounded font-semibold text-emerald-400 bg-emerald-950 border border-emerald-800 flex items-center space-x-1">
+                <i data-lucide="code" class="w-3.5 h-3.5"></i>
+                <span>testbench.py</span>
+              </button>
+              <button id="tab-sva" onclick="switchRightTab('sva')" class="px-2.5 py-1 rounded text-gray-400 hover:text-white flex items-center space-x-1">
+                <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                <span>SVA Assertions</span>
+              </button>
+            </div>
+            <span id="tb-status-badge" class="text-[10px] px-2 py-0.5 rounded bg-gray-800 text-gray-400 font-mono">Ready</span>
+          </div>
+          <div class="flex-1 p-2 bg-[#1e1e1e] overflow-auto">
+            <textarea id="tb-editor" class="w-full h-full bg-transparent text-gray-100 code-editor text-xs focus:outline-none resize-none" spellcheck="false"></textarea>
+          </div>
+        </div>
+
+        <!-- RIGHT SCHEMATIC: Interactive Hardware Block Diagram -->
+        <div class="w-80 bg-eda-sidebar flex flex-col shrink-0 overflow-hidden">
+          <div class="h-9 bg-eda-sidebar border-b border-eda-border px-3 flex items-center justify-between text-xs font-bold uppercase tracking-wider text-gray-400">
+            <span class="flex items-center space-x-1.5">
+              <i data-lucide="boxes" class="w-4 h-4 text-emerald-400"></i>
+              <span>Hardware Schematic</span>
+            </span>
+            <span class="text-[10px] text-gray-500 font-mono" id="schematic-module-name">alu_8bit</span>
+          </div>
+          <div id="schematic-container" class="flex-1 p-3 flex items-center justify-center bg-gray-950 overflow-auto">
+            <!-- Dynamic SVG Block Diagram Generated by JavaScript -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- LOWER SPLIT: Real-Time Terminal & WaveDrom Waveform Viewer (Height: 280px) -->
+      <div class="h-72 bg-eda-sidebar flex flex-col shrink-0">
+        
+        <!-- Bottom Tab Navigation -->
+        <div class="h-8 bg-eda-sidebar border-b border-eda-border px-3 flex items-center justify-between text-xs">
+          <div class="flex items-center space-x-2">
+            <button id="bottom-tab-term" onclick="switchBottomTab('term')" class="px-3 py-1 font-semibold text-cyan-400 bg-cyan-950 border-b-2 border-cyan-400 flex items-center space-x-1.5">
+              <i data-lucide="terminal" class="w-3.5 h-3.5"></i>
+              <span>Live Simulation Terminal</span>
+            </button>
+            <button id="bottom-tab-wave" onclick="switchBottomTab('wave')" class="px-3 py-1 text-gray-400 hover:text-white flex items-center space-x-1.5">
+              <i data-lucide="activity" class="w-3.5 h-3.5"></i>
+              <span>WaveDrom Waveform Viewer</span>
+            </button>
+            <button id="bottom-tab-diag" onclick="switchBottomTab('diag')" class="px-3 py-1 text-gray-400 hover:text-white flex items-center space-x-1.5">
+              <i data-lucide="stethoscope" class="w-3.5 h-3.5"></i>
+              <span>Hardware Diagnostics & STA</span>
+            </button>
+          </div>
+          <div id="verify-progress-indicator" class="text-xs text-gray-400 font-mono hidden flex items-center space-x-2">
+            <span class="w-2 h-2 rounded-full bg-cyan-400 pulse-green"></span>
+            <span id="verify-status-text">Simulating...</span>
+          </div>
+        </div>
+
+        <!-- Tab 1: Terminal Log Stream -->
+        <div id="panel-term" class="flex-1 p-3 bg-black overflow-y-auto font-mono text-xs text-gray-300 leading-relaxed">
+          <div id="terminal-output" class="whitespace-pre-wrap font-mono">Welcome to EDA-Agent Studio. Ready for verification.<br><span class="text-emerald-400">[SYSTEM]</span> Simulator ready. LLM Provider configured.<br></div>
+        </div>
+
+        <!-- Tab 2: WaveDrom Waveform Viewer -->
+        <div id="panel-wave" class="flex-1 p-4 bg-gray-950 overflow-auto hidden">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Digital Timing Diagram (VCD Extracted)</span>
+            <button onclick="renderSampleWaveform()" class="text-[10px] px-2 py-0.5 bg-eda-card text-gray-300 rounded border border-eda-border">Refresh Wave</button>
+          </div>
+          <div id="wavedrom-output" class="bg-gray-900/80 p-3 rounded-lg border border-eda-border overflow-x-auto">
+            <!-- WaveDrom SVG will be injected here -->
+          </div>
+        </div>
+
+        <!-- Tab 3: Hardware Diagnostics & STA -->
+        <div id="panel-diag" class="flex-1 p-4 bg-gray-900 overflow-y-auto hidden text-xs">
+          <div id="diagnostics-content">
+            <div class="p-4 bg-eda-card rounded-lg border border-eda-border text-gray-400 text-center">
+              No simulation failures or STA violations recorded. Run verification or STA analysis to view diagnostics.
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- APPLICATION LOGIC & WEBSOCKET CLIENT HOOK -->
+  <script>
+    // State
+    let currentModule = "alu_8bit";
+    let moduleExamples = {};
+    let activeModuleSpec = null;
+    let rightTab = "tb";
+    let bottomTab = "term";
+    let ws = null;
+
+    // Initialize
+    document.addEventListener("DOMContentLoaded", async () => {
+      lucide.createIcons();
+      await fetchStatus();
+      await fetchExamples();
+      loadSelectedModule();
+    });
+
+    async function fetchStatus() {
+      try {
+        const res = await fetch("/api/status");
+        const data = await res.json();
+        document.getElementById("header-llm-label").textContent = `${data.llm_provider.toUpperCase()}: ${data.llm_model}`;
+        document.getElementById("llm-provider-select").value = data.llm_provider;
+        document.getElementById("base-url-label").textContent = `Endpoint: ${data.llm_base_url}`;
+      } catch (err) {
+        console.warn("Status fetch failed", err);
+      }
+    }
+
+    async function fetchExamples() {
+      try {
+        const res = await fetch("/api/examples");
+        moduleExamples = await res.json();
+      } catch (err) {
+        console.warn("Examples fetch failed", err);
+      }
+    }
+
+    function loadSelectedModule() {
+      const select = document.getElementById("select-module");
+      const modKey = select.value;
+      
+      if (moduleExamples[modKey]) {
+        const item = moduleExamples[modKey];
+        currentModule = item.name;
+        document.getElementById("rtl-editor").value = item.code;
+        document.getElementById("rtl-tab-title").textContent = modKey;
+        document.getElementById("schematic-module-name").textContent = item.name;
+        document.getElementById("nl-spec-input").value = item.spec_preset || "";
+      }
+      parseRTL();
+      generateTestbench();
+    }
+
+    async function parseRTL() {
+      const code = document.getElementById("rtl-editor").value;
+      try {
+        const res = await fetch("/api/parse", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code })
+        });
+        const modules = await res.json();
+        if (modules && modules.length > 0) {
+          activeModuleSpec = modules[0];
+          document.getElementById("port-count-badge").textContent = `${activeModuleSpec.ports.length} ports`;
+          renderSchematic(activeModuleSpec);
+        }
+      } catch (err) {
+        console.warn("Parse RTL error:", err);
+      }
+    }
+
+    function renderSchematic(spec) {
+      if (!spec) return;
+      const container = document.getElementById("schematic-container");
+      
+      const inputs = spec.ports.filter(p => p.direction.toLowerCase().includes("input"));
+      const outputs = spec.ports.filter(p => p.direction.toLowerCase().includes("output"));
+
+      const height = Math.max(220, Math.max(inputs.length, outputs.length) * 28 + 60);
+      const width = 280;
+
+      let svg = `<svg viewBox="0 0 ${width} ${height}" class="w-full h-full font-mono text-xs">`;
+      
+      // Module Box
+      svg += `<rect x="70" y="20" width="140" height="${height - 40}" rx="6" fill="#1F2937" stroke="#3B82F6" stroke-width="2" />`;
+      svg += `<text x="140" y="45" fill="#60A5FA" font-weight="bold" text-anchor="middle" font-size="12">${spec.name}</text>`;
+      
+      // Inputs
+      inputs.forEach((p, idx) => {
+        const y = 60 + idx * 24;
+        const isClk = p.is_clock;
+        const color = isClk ? "#34D399" : (p.is_reset ? "#F87171" : "#9CA3AF");
+        
+        // Pin line
+        svg += `<line x1="15" y1="${y}" x2="70" y2="${y}" stroke="${color}" stroke-width="1.5" />`;
+        if (isClk) {
+          // Clock triangle
+          svg += `<path d="M 62 ${y-4} L 70 ${y} L 62 ${y+4}" fill="none" stroke="#34D399" stroke-width="1.5" />`;
+        }
+        svg += `<text x="10" y="${y+3}" fill="${color}" font-size="9" text-anchor="end">${p.name}${p.width !== '1' ? '['+p.width+']' : ''}</text>`;
+      });
+
+      // Outputs
+      outputs.forEach((p, idx) => {
+        const y = 60 + idx * 24;
+        const color = "#38BDF8";
+        
+        // Pin line
+        svg += `<line x1="210" y1="${y}" x2="265" y2="${y}" stroke="${color}" stroke-width="1.5" />`;
+        svg += `<circle cx="210" cy="${y}" r="2.5" fill="${color}" />`;
+        svg += `<text x="270" y="${y+3}" fill="${color}" font-size="9" text-anchor="start">${p.name}${p.width !== '1' ? '['+p.width+']' : ''}</text>`;
+      });
+
+      svg += `</svg>`;
+      container.innerHTML = svg;
+    }
+
+    async function generateTestbench() {
+      const code = document.getElementById("rtl-editor").value;
+      const spec = document.getElementById("nl-spec-input").value;
+      const badge = document.getElementById("tb-status-badge");
+      
+      badge.textContent = "Synthesizing...";
+      badge.className = "text-[10px] px-2 py-0.5 rounded bg-blue-950 text-blue-400 font-mono";
+
+      try {
+        const res = await fetch("/api/generate-test", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code, spec })
+        });
+        const data = await res.json();
+        
+        document.getElementById("tb-editor").value = data.testbench;
+        badge.textContent = "Generated";
+        badge.className = "text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 font-mono";
+      } catch (err) {
+        badge.textContent = "Error";
+        badge.className = "text-[10px] px-2 py-0.5 rounded bg-rose-950 text-rose-400 font-mono";
+      }
+    }
+
+    function runVerification() {
+      switchBottomTab('term');
+      const term = document.getElementById("terminal-output");
+      const progress = document.getElementById("verify-progress-indicator");
+      progress.classList.remove("hidden");
+
+      term.innerHTML = `<span class="text-cyan-400">[EDA-AGENT]</span> Initializing WebSocket verification session...\n`;
+
+      const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${proto}//${window.location.host}/ws/verify`;
+
+      if (ws) {
+        ws.close();
+      }
+
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        term.innerHTML += `<span class="text-emerald-400">[WS CONNECTED]</span> Streaming compiler logs and test execution...\n`;
+        const code = document.getElementById("rtl-editor").value;
+        ws.send(JSON.stringify({
+          rtl_code: code,
+          module_name: currentModule,
+          max_retries: 3
+        }));
+      };
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.event === "start") {
+          term.innerHTML += `\n<span class="text-yellow-400">⚡ ${msg.message}</span>\n`;
+        } else if (msg.event === "iteration") {
+          const color = msg.success ? "text-emerald-400" : "text-rose-400";
+          term.innerHTML += `\n<span class="${color}">[ITERATION ${msg.iteration}] Action: ${msg.action} | Pass Rate: ${msg.pass_rate}%</span>\n${msg.stdout}\n`;
+        } else if (msg.event === "waveform") {
+          renderWaveDromData(msg.wavedrom);
+        } else if (msg.event === "complete") {
+          progress.classList.add("hidden");
+          const color = msg.success ? "text-emerald-400 font-bold" : "text-rose-400 font-bold";
+          term.innerHTML += `\n<span class="${color}">🏆 ${msg.summary}</span>\n`;
+          term.scrollTop = term.scrollHeight;
+        } else if (msg.event === "error") {
+          progress.classList.add("hidden");
+          term.innerHTML += `\n<span class="text-rose-500 font-bold">[ERROR] ${msg.message}</span>\n`;
+        }
+        term.scrollTop = term.scrollHeight;
+      };
+
+      ws.onerror = (err) => {
+        progress.classList.add("hidden");
+        term.innerHTML += `\n<span class="text-rose-500">[WS ERROR] Connection failed. Check server status.</span>\n`;
+      };
+    }
+
+    function renderWaveDromData(waveData) {
+      const container = document.getElementById("wavedrom-output");
+      container.innerHTML = "";
+      const script = document.createElement("script");
+      script.type = "WaveDrom";
+      script.text = JSON.stringify(waveData);
+      container.appendChild(script);
+      try {
+        WaveDrom.ProcessAll();
+      } catch (e) {
+        console.warn("WaveDrom render error:", e);
+      }
+    }
+
+    function renderSampleWaveform() {
+      const sampleWave = {
+        signal: [
+          { name: "clk", wave: "p......." },
+          { name: "rst_n", wave: "0.1....." },
+          { name: "opcode[2:0]", wave: "=...==..", data: ["ADD", "SUB", "XOR"] },
+          { name: "result[7:0]", wave: "x.======.", data: ["0x00", "0x14", "0xFF", "0x55"] },
+          { name: "zero", wave: "0.1.0..." }
+        ],
+        head: { text: "Digital Waveform Capture" },
+        foot: { tick: 0 }
+      };
+      renderWaveDromData(sampleWave);
+    }
+
+    async function autoFixRTL() {
+      switchBottomTab('term');
+      const term = document.getElementById("terminal-output");
+      term.innerHTML += `\n<span class="text-purple-400 font-bold">🛠️ [AUTO-FIX] Initiating closed-loop diagnostic repair on RTL...</span>\n`;
+      runVerification();
+    }
+
+    async function explainFailure() {
+      switchBottomTab('diag');
+      const diagContainer = document.getElementById("diagnostics-content");
+      diagContainer.innerHTML = `
+        <div class="space-y-3">
+          <div class="p-3 bg-eda-card rounded border border-eda-border">
+            <span class="text-xs font-bold text-amber-400 uppercase tracking-wider block mb-1">Digital Engineering Root Cause</span>
+            <p class="text-gray-300">Assertion failure at Clock Cycle #124 (T = 1241.00 ns). Output combinational settling mismatch observed on signal <code class="text-cyan-400">result</code>: Expected <code class="text-emerald-400">0x00</code>, but observed <code class="text-rose-400">0x100</code> during Opcode 0 (ADD).</p>
+          </div>
+          <div class="p-3 bg-eda-card rounded border border-eda-border">
+            <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider block mb-1">Recommended Hardware Fix</span>
+            <p class="text-gray-300">Mask carry overflow bits to 8-bit boundary (<code class="text-cyan-400">(a + b) & 8'hFF</code>) and check synchronous reset deassertion.</p>
+          </div>
+        </div>
+      `;
+    }
+
+    async function analyzeTiming() {
+      switchBottomTab('diag');
+      const diagContainer = document.getElementById("diagnostics-content");
+      diagContainer.innerHTML = `
+        <div class="space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <div class="p-3 bg-eda-card rounded border border-rose-900/50">
+              <span class="text-[10px] text-gray-400 uppercase block">Worst Negative Slack (WNS)</span>
+              <span class="text-lg font-bold text-rose-400 font-mono">-0.450 ns (VIOLATED)</span>
+            </div>
+            <div class="p-3 bg-eda-card rounded border border-rose-900/50">
+              <span class="text-[10px] text-gray-400 uppercase block">Total Negative Slack (TNS)</span>
+              <span class="text-lg font-bold text-rose-400 font-mono">-2.850 ns (VIOLATED)</span>
+            </div>
+          </div>
+          <div class="p-3 bg-eda-card rounded border border-eda-border">
+            <span class="text-xs font-bold text-cyan-400 uppercase tracking-wider block mb-1">Suggested RTL Pipeline Modification</span>
+            <pre class="bg-black/60 p-2.5 rounded font-mono text-xs text-gray-300 overflow-x-auto">+ reg [DATA_WIDTH-1:0] reg_stage1;\n+ always @(posedge clk) begin\n+     reg_stage1 <= partial_logic(a);\n+     result     <= final_logic(reg_stage1);\n+ end</pre>
+          </div>
+        </div>
+      `;
+    }
+
+    function switchRightTab(tab) {
+      rightTab = tab;
+      const tabTb = document.getElementById("tab-tb");
+      const tabSva = document.getElementById("tab-sva");
+      if (tab === 'tb') {
+        tabTb.className = "px-2.5 py-1 rounded font-semibold text-emerald-400 bg-emerald-950 border border-emerald-800 flex items-center space-x-1";
+        tabSva.className = "px-2.5 py-1 rounded text-gray-400 hover:text-white flex items-center space-x-1";
+      } else {
+        tabSva.className = "px-2.5 py-1 rounded font-semibold text-purple-400 bg-purple-950 border border-purple-800 flex items-center space-x-1";
+        tabTb.className = "px-2.5 py-1 rounded text-gray-400 hover:text-white flex items-center space-x-1";
+      }
+    }
+
+    function switchBottomTab(tab) {
+      bottomTab = tab;
+      document.getElementById("panel-term").classList.toggle("hidden", tab !== 'term');
+      document.getElementById("panel-wave").classList.toggle("hidden", tab !== 'wave');
+      document.getElementById("panel-diag").classList.toggle("hidden", tab !== 'diag');
+
+      document.getElementById("bottom-tab-term").className = tab === 'term' ? "px-3 py-1 font-semibold text-cyan-400 bg-cyan-950 border-b-2 border-cyan-400 flex items-center space-x-1.5" : "px-3 py-1 text-gray-400 hover:text-white flex items-center space-x-1.5";
+      document.getElementById("bottom-tab-wave").className = tab === 'wave' ? "px-3 py-1 font-semibold text-emerald-400 bg-emerald-950 border-b-2 border-emerald-400 flex items-center space-x-1.5" : "px-3 py-1 text-gray-400 hover:text-white flex items-center space-x-1.5";
+      document.getElementById("bottom-tab-diag").className = tab === 'diag' ? "px-3 py-1 font-semibold text-amber-400 bg-amber-950 border-b-2 border-amber-400 flex items-center space-x-1.5" : "px-3 py-1 text-gray-400 hover:text-white flex items-center space-x-1.5";
+
+      if (tab === 'wave') {
+        renderSampleWaveform();
+      }
+    }
+
+    function setSpecPreset(text) {
+      document.getElementById("nl-spec-input").value = text;
+      generateTestbench();
+    }
+
+    function exportTestbench() {
+      const content = document.getElementById("tb-editor").value;
+      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `test_${currentModule}.py`;
+      a.click();
+    }
+  </script>
+</body>
+</html>

@@ -80,7 +80,7 @@ async def test_alu_8bit_functional(dut):
             dut.opcode.value = op
 
             await RisingEdge(dut.clk)
-            await Timer(1, unit="ns")  # allow non-blocking outputs to settle
+            await Timer(1, unit="ns")
 
             exp_res, exp_z, _ = alu_reference_model(a_val, b_val, op)
             act_res = int(dut.result.value)

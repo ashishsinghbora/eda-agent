@@ -1,9 +1,13 @@
-"""Analyzers package for simulation results and static timing analysis (STA)."""
+"""Analyzers package for simulation results, static timing analysis (STA), and human diagnostics."""
 
 from .coverage_analyzer import (
     ResultsAnalyzer,
     TestCaseResult,
     TestSuiteReport,
+)
+from .human_diagnostics import (
+    HardwareFailureDiagnosis,
+    HumanDiagnosticsTranslator,
 )
 from .sta_analyzer import (
     STAAnalyzer,
@@ -18,4 +22,6 @@ __all__ = [
     "STAAnalyzer",
     "TimingPath",
     "TimingReport",
+    "HardwareFailureDiagnosis",
+    "HumanDiagnosticsTranslator",
 ]

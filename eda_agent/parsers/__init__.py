@@ -1,9 +1,11 @@
-"""RTL Parser package."""
+"""Parsers package for Verilog AST, interfaces, and VCD waveforms."""
 
+from .vcd_parser import (
+    VCDData,
+    VCDParser,
+    VCDVariable,
+)
 from .verilog_parser import (
-    ModuleInfo,
-    ParameterInfo,
-    PortInfo,
     RTLParser,
     VerilogParser,
 )
@@ -11,7 +13,7 @@ from .verilog_parser import (
 __all__ = [
     "VerilogParser",
     "RTLParser",
-    "ModuleInfo",
-    "PortInfo",
-    "ParameterInfo",
+    "VCDParser",
+    "VCDData",
+    "VCDVariable",
 ]

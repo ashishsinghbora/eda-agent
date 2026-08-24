@@ -52,6 +52,66 @@ def info() -> None:
 
 
 @app.command()
+def config(
+    provider: Optional[str] = typer.Option(None, "--provider", "-p", help="LLM Provider ('ollama', 'openai_compatible', 'vllm', 'gemini', 'openai', 'rule_based')"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Model name (e.g. 'deepseek-coder-v2:16b', 'qwen2.5-coder:32b', 'codestral')"),
+    base_url: Optional[str] = typer.Option(None, "--base-url", "-u", help="Base URL for LLM endpoint"),
+    temperature: Optional[float] = typer.Option(None, "--temperature", "-t", help="Sampling temperature (0.0 to 2.0)"),
+    api_key: Optional[str] = typer.Option(None, "--api-key", "-k", help="API key for authenticated endpoints"),
+    timeout: Optional[int] = typer.Option(None, "--timeout", help="Request timeout in seconds"),
+    show: bool = typer.Option(False, "--show", "-s", help="Display active configuration"),
+    reset: bool = typer.Option(False, "--reset", help="Reset configuration to factory defaults"),
+) -> None:
+    """View and update EDA-Agent LLM provider configuration and local model endpoints."""
+    from eda_agent.config import EDAConfig, get_config_path, load_config, save_config, update_config
+
+    if reset:
+        default_cfg = EDAConfig()
+        save_config(default_cfg)
+        console.print("[bold green]Configuration reset to default settings.[/bold green]")
+        cfg = default_cfg
+    elif any(v is not None for v in (provider, model, base_url, temperature, api_key, timeout)):
+        updates = {}
+        if provider is not None:
+            updates["provider"] = provider
+        if model is not None:
+            updates["model"] = model
+        if base_url is not None:
+            updates["base_url"] = base_url
+        if temperature is not None:
+            updates["temperature"] = temperature
+        if api_key is not None:
+            updates["api_key"] = api_key
+        if timeout is not None:
+            updates["timeout"] = timeout
+
+        try:
+            cfg = update_config(**updates)
+            console.print(f"[bold green]Updated configuration successfully! Saved to {get_config_path()}[/bold green]")
+        except Exception as e:
+            console.print(f"[bold red]Configuration error:[/bold red] {e}")
+            raise typer.Exit(code=1)
+    else:
+        cfg = load_config()
+
+    # Display configuration table
+    table = Table(title="EDA-Agent LLM & Provider Configuration", show_header=True, header_style="bold cyan")
+    table.add_column("Setting", style="dim", width=22)
+    table.add_column("Current Value", style="bold green")
+    table.add_column("Source / Note", style="dim")
+
+    table.add_row("Provider", cfg.provider, "Local Ollama" if cfg.provider == "ollama" else "Configured Provider")
+    table.add_row("Model Name", cfg.model, "Target coding model")
+    table.add_row("Base URL", cfg.base_url, "Local Endpoint" if "localhost" in cfg.base_url or "127.0.0.1" in cfg.base_url else "Remote Endpoint")
+    table.add_row("Temperature", str(cfg.temperature), "Synthesis temperature")
+    table.add_row("API Key", "********" if cfg.api_key else "(None / Local)", "Authentication")
+    table.add_row("Timeout (s)", str(cfg.timeout), "HTTP connection timeout")
+    table.add_row("Config File", str(get_config_path()), "Persistent storage")
+
+    console.print(table)
+
+
+@app.command()
 def parse(
     file_path: str = typer.Argument(..., help="Path to Verilog file (.v/.sv)"),
 ) -> None:
@@ -202,6 +262,55 @@ def generate(
         console.print(Panel(tb_code, title=f"Generated Testbench: test_{spec.name}.py", expand=False))
 
 
+@app.command("assert")
+def assert_cmd(
+    verilog_file: str = typer.Argument(..., help="Path to RTL Verilog file (.v/.sv)"),
+    spec: str = typer.Option(..., "--spec", "-s", help="Plain-English timing or protocol requirement"),
+    output: Optional[str] = typer.Option(None, "--output", "-o", help="Optional output file to save assertions"),
+) -> None:
+    """Synthesize SystemVerilog Assertions (SVA) and Cocotb check coroutines from plain-English specifications."""
+    from eda_agent.generators.assertion_generator import AssertionGenerator
+
+    path = Path(verilog_file)
+    if not path.is_file():
+        console.print(f"[bold red]Error:[/bold red] File '{verilog_file}' does not exist.")
+        raise typer.Exit(code=1)
+
+    modules = VerilogParser.parse_file(path)
+    module_spec = modules[0] if modules else None
+
+    generator = AssertionGenerator()
+    console.print(f"[bold cyan]Synthesizing assertions for requirement:[/bold cyan] \"{spec}\"")
+
+    generated = generator.generate(
+        spec_text=spec,
+        module_spec=module_spec
+    )
+
+    console.print(Panel(
+        f"[bold]Target Module:[/bold] {module_spec.name if module_spec else 'Generic'}\n"
+        f"[bold]Property Identifier:[/bold] [cyan]{generated.property_name}[/cyan]\n"
+        f"[bold]Clock Domain:[/bold] {generated.clock_signal} | [bold]Reset:[/bold] {generated.reset_signal}\n"
+        f"[bold]Signals Involved:[/bold] {', '.join(generated.signals_involved)}",
+        title="Hardware Assertion Specification",
+        expand=False
+    ))
+
+    # SVA Panel
+    sva_syntax = Syntax(generated.sva_code, "verilog", theme="monokai", line_numbers=False)
+    console.print(Panel(sva_syntax, title="Synthesizable SystemVerilog Assertion (SVA)", expand=False))
+
+    # Cocotb Checker Panel
+    cocotb_syntax = Syntax(generated.cocotb_code, "python", theme="monokai", line_numbers=False)
+    console.print(Panel(cocotb_syntax, title="Cocotb Coroutine Assertion Checker", expand=False))
+
+    if output:
+        out_path = Path(output)
+        content = f"// SystemVerilog Assertions\n{generated.sva_code}\n\n# Cocotb Assertion Checker\n{generated.cocotb_code}\n"
+        out_path.write_text(content, encoding="utf-8")
+        console.print(f"[bold green]Saved assertions to:[/bold green] {out_path}")
+
+
 @app.command()
 def verify(
     rtl_file: str = typer.Argument(..., help="Path to RTL Verilog file (.v/.sv)"),
@@ -334,6 +443,27 @@ def analyze_timing(
         for diff in report.actionable_diffs:
             syntax = Syntax(diff, "diff", theme="monokai", line_numbers=False)
             console.print(Panel(syntax, title="Suggested Verilog Modification", expand=False))
+
+
+@app.command()
+def ui(
+    host: str = typer.Option("127.0.0.1", "--host", "-h", help="Host interface to bind the web server"),
+    port: int = typer.Option(8000, "--port", "-p", help="Port number for web server"),
+    reload: bool = typer.Option(False, "--reload", help="Enable live auto-reload for development"),
+) -> None:
+    """Launch the EDA-Agent FastAPI local backend and interactive dashboard server."""
+    import uvicorn
+
+    console.print(Panel(
+        f"[bold green]Starting EDA-Agent Web UI Server[/bold green]\n\n"
+        f"  📡 API Endpoint:      [bold cyan]http://{host}:{port}[/bold cyan]\n"
+        f"  📚 Interactive Docs:  [cyan]http://{host}:{port}/docs[/cyan]\n"
+        f"  ⚡ WebSocket Stream:  [cyan]ws://{host}:{port}/ws/verify[/cyan]",
+        title="EDA-Agent Local Backend",
+        expand=False
+    ))
+
+    uvicorn.run("eda_agent.server.app:app", host=host, port=port, reload=reload, log_level="info")
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 
 class TimingPath(BaseModel):
@@ -32,16 +32,19 @@ class TimingReport(BaseModel):
     recommendations: List[str] = Field(default_factory=list, description="Recommended architectural RTL fixes")
     actionable_diffs: List[str] = Field(default_factory=list, description="Suggested Verilog diff snippets")
 
+    @computed_field
     @property
     def has_setup_violation(self) -> bool:
         """Return True if setup timing is violated."""
         return self.wns_setup < -0.001 or any(p.is_violated for p in self.setup_paths)
 
+    @computed_field
     @property
     def has_hold_violation(self) -> bool:
         """Return True if hold timing is violated."""
         return self.wns_hold < -0.001 or any(p.is_violated for p in self.hold_paths)
 
+    @computed_field
     @property
     def is_clean(self) -> bool:
         """Return True if all setup and hold timing constraints are met."""

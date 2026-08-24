@@ -1,34 +1,285 @@
-"""LLM Client interface supporting online API providers and offline rule-based testbench synthesis."""
+"""LLM Provider abstraction supporting local models (Ollama, vLLM) and cloud endpoints."""
 
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
+import urllib.error
+import urllib.request
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional
-from eda_agent.schemas import ModuleSpec, PortDirection
+from typing import Any, Dict, List, Optional
+
+from eda_agent.config import EDAConfig, is_local_endpoint, load_config
+
+logger = logging.getLogger(__name__)
 
 
-class BaseLLMClient(ABC):
-    """Abstract base class for LLM completion providers."""
+class LLMProvider(ABC):
+    """Abstract base class for LLM completion and synthesis providers."""
 
     @abstractmethod
     def generate(self, prompt: str, system_prompt: Optional[str] = None) -> str:
-        """Generate testbench code from prompt."""
+        """Generate text completion from prompt and optional system prompt."""
         pass
 
 
-class RuleBasedLLMClient(BaseLLMClient):
-    """Autonomous offline testbench generator synthesizing cocotb code from RTL metadata."""
+# Backwards compatibility alias
+BaseLLMClient = LLMProvider
+
+
+class OpenAICompatibleProvider(LLMProvider):
+    """Generic provider for OpenAI-compatible HTTP endpoints (vLLM, Ollama, LM Studio, Enterprise)."""
+
+    def __init__(
+        self,
+        base_url: str = "http://localhost:11434/v1",
+        model: str = "deepseek-coder-v2:16b",
+        api_key: Optional[str] = None,
+        temperature: float = 0.2,
+        timeout: int = 60,
+        fallback_to_rule_based: bool = True,
+    ):
+        self.base_url = base_url.rstrip("/")
+        self.model = model
+        self.api_key = api_key or "local"
+        self.temperature = temperature
+        self.timeout = timeout
+        self.fallback_to_rule_based = fallback_to_rule_based
+
+    def _get_chat_url(self) -> str:
+        """Resolve full chat completions URL."""
+        if self.base_url.endswith("/chat/completions"):
+            return self.base_url
+        return f"{self.base_url}/chat/completions"
+
+    def generate(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+        """Execute chat completion request over HTTP with resilient fallback."""
+        url = self._get_chat_url()
+
+        headers = {
+            "Content-Type": "application/json",
+        }
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": self.temperature,
+        }
+
+        req = urllib.request.Request(
+            url=url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers=headers,
+            method="POST"
+        )
+
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                return data["choices"][0]["message"]["content"]
+        except Exception as e:
+            if self.fallback_to_rule_based:
+                logger.warning(
+                    f"LLM endpoint '{url}' unreachable ({e}). Falling back to built-in rule-based synthesis engine."
+                )
+                return RuleBasedLLMClient().generate(prompt, system_prompt)
+            raise ConnectionError(
+                f"Failed to connect to OpenAI-compatible endpoint at '{url}': {e}. "
+                f"Ensure the local model server (e.g. Ollama, vLLM) is running."
+            ) from e
+
+
+class OllamaProvider(OpenAICompatibleProvider):
+    """Dedicated provider for local Ollama instances (default: http://localhost:11434/v1)."""
+
+    def __init__(
+        self,
+        base_url: str = "http://localhost:11434/v1",
+        model: str = "deepseek-coder-v2:16b",
+        temperature: float = 0.2,
+        timeout: int = 60,
+        fallback_to_rule_based: bool = True,
+    ):
+        # Enforce airgap and local endpoint guarantee
+        if not is_local_endpoint(base_url):
+            raise PermissionError(
+                f"Airgap / Privacy Violation: OllamaProvider received external URL '{base_url}'. "
+                f"Local providers must only point to loopback/local network endpoints."
+            )
+
+        super().__init__(
+            base_url=base_url,
+            model=model,
+            api_key="ollama",
+            temperature=temperature,
+            timeout=timeout,
+            fallback_to_rule_based=fallback_to_rule_based,
+        )
+
+    def generate(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+        """Attempt OpenAI-compatible endpoint, then Ollama native /api/chat, then fallback."""
+        url = self._get_chat_url()
+
+        headers = {"Content-Type": "application/json"}
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        # 1. Try /v1/chat/completions
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": self.temperature,
+            "stream": False,
+        }
+
+        req = urllib.request.Request(
+            url=url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers=headers,
+            method="POST"
+        )
+
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                if "choices" in data:
+                    return data["choices"][0]["message"]["content"]
+                elif "message" in data:
+                    return data["message"]["content"]
+        except Exception as primary_err:
+            # 2. Try native Ollama /api/chat if URL had /v1
+            if "/v1" in self.base_url:
+                native_url = self.base_url.replace("/v1", "") + "/api/chat"
+                try:
+                    native_req = urllib.request.Request(
+                        url=native_url,
+                        data=json.dumps(payload).encode("utf-8"),
+                        headers=headers,
+                        method="POST"
+                    )
+                    with urllib.request.urlopen(native_req, timeout=self.timeout) as resp:
+                        data = json.loads(resp.read().decode("utf-8"))
+                        if "message" in data:
+                            return data["message"]["content"]
+                except Exception:
+                    pass
+
+            if self.fallback_to_rule_based:
+                logger.warning(
+                    f"Ollama server at '{url}' unreachable ({primary_err}). "
+                    "Falling back to built-in rule-based synthesis engine."
+                )
+                return RuleBasedLLMClient().generate(prompt, system_prompt)
+
+            raise ConnectionError(
+                f"Failed to connect to local Ollama server at '{url}': {primary_err}. "
+                f"Please ensure Ollama is running (`ollama serve`) and model '{self.model}' is pulled."
+            ) from primary_err
+
+
+class GeminiProvider(LLMProvider):
+    """Cloud provider for Google Gemini API."""
+
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model: str = "gemini-2.5-flash",
+        temperature: float = 0.2,
+        timeout: int = 60,
+        fallback_to_rule_based: bool = True,
+    ):
+        self.api_key = api_key or os.environ.get("GEMINI_API_KEY", "")
+        self.model = model
+        self.temperature = temperature
+        self.timeout = timeout
+        self.fallback_to_rule_based = fallback_to_rule_based
+
+    def generate(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+        if not self.api_key:
+            if self.fallback_to_rule_based:
+                return RuleBasedLLMClient().generate(prompt, system_prompt)
+            raise ValueError("GEMINI_API_KEY environment variable is required to use GeminiProvider.")
+
+        url = (
+            f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
+            f"?key={self.api_key}"
+        )
+        headers = {"Content-Type": "application/json"}
+
+        contents = []
+        if system_prompt:
+            contents.append({"role": "user", "parts": [{"text": f"System Instructions:\n{system_prompt}"}]})
+            contents.append({"role": "model", "parts": [{"text": "Understood. I will follow these instructions."}]})
+        contents.append({"role": "user", "parts": [{"text": prompt}]})
+
+        payload = {
+            "contents": contents,
+            "generationConfig": {
+                "temperature": self.temperature,
+            }
+        }
+
+        req = urllib.request.Request(
+            url=url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers=headers,
+            method="POST"
+        )
+
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                return data["candidates"][0]["content"]["parts"][0]["text"]
+        except Exception as e:
+            if self.fallback_to_rule_based:
+                return RuleBasedLLMClient().generate(prompt, system_prompt)
+            raise RuntimeError(f"Gemini API call failed: {e}") from e
+
+
+class CloudProvider(OpenAICompatibleProvider):
+    """Convenience alias for OpenAI cloud service."""
+
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model: str = "gpt-4o",
+        temperature: float = 0.2,
+        timeout: int = 60,
+        fallback_to_rule_based: bool = True,
+    ):
+        key = api_key or os.environ.get("OPENAI_API_KEY", "")
+        super().__init__(
+            base_url="https://api.openai.com/v1",
+            model=model,
+            api_key=key,
+            temperature=temperature,
+            timeout=timeout,
+            fallback_to_rule_based=fallback_to_rule_based,
+        )
+
+
+OpenAILLMClient = CloudProvider
+
+
+class RuleBasedLLMClient(LLMProvider):
+    """Autonomous offline testbench generator synthesizing cocotb code without an LLM server."""
 
     def generate(self, prompt: str, system_prompt: Optional[str] = None) -> str:
         """Synthesize a complete cocotb testbench using algorithmic pattern recognition."""
-        # Extract module name from prompt
         mod_m = re.search(r'\*\*Module Name:\*\*\s*([a-zA-Z_0-9$]+)', prompt)
         mod_name = mod_m.group(1).strip() if mod_m else "dut_module"
 
-        # Check if this is an ALU, FIFO, or General module
         is_alu = "alu" in mod_name.lower() or "OP_" in prompt or "opcode" in prompt.lower()
         is_fifo = "fifo" in mod_name.lower() or ("wclk" in prompt and "rclk" in prompt)
 
@@ -123,7 +374,7 @@ async def test_{mod_name}_functional(dut):
             dut.opcode.value = op
 
             await RisingEdge(dut.clk)
-            await Timer(1, unit="ns")  # allow non-blocking outputs to settle
+            await Timer(1, unit="ns")
 
             exp_res, exp_z, _ = alu_reference_model(a_val, b_val, op)
             act_res = int(dut.result.value)
@@ -304,12 +555,10 @@ from cocotb.triggers import RisingEdge, Timer
 @cocotb.test()
 async def test_{mod_name}_initialization(dut):
     """Verify module initial state."""
-    # Look for clock signal
     clk_signal = getattr(dut, "clk", getattr(dut, "clock", None))
     if clk_signal is not None:
         cocotb.start_soon(Clock(clk_signal, 10, unit="ns").start())
 
-    # Look for reset signal
     rst_signal = getattr(dut, "rst_n", getattr(dut, "reset_n", getattr(dut, "rst", getattr(dut, "reset", None))))
     if rst_signal is not None:
         rst_signal.value = 0
@@ -324,51 +573,53 @@ async def test_{mod_name}_initialization(dut):
 ```'''
 
 
-class OpenAILLMClient(BaseLLMClient):
-    """LLM client for OpenAI or compatible OpenAI-like HTTP APIs."""
+def get_llm_client(
+    config: Optional[EDAConfig] = None,
+    provider: Optional[str] = None
+) -> LLMProvider:
+    """Factory function for instantiating the configured LLM provider."""
+    cfg = config or load_config()
+    prov = (provider or cfg.provider).lower().strip()
 
-    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4o"):
-        self.api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
-        self.model = model
+    # Enforce airgap / privacy policy
+    cfg.enforce_privacy()
 
-    def generate(self, prompt: str, system_prompt: Optional[str] = None) -> str:
-        if not self.api_key:
-            raise ValueError("OPENAI_API_KEY environment variable is required to use OpenAILLMClient.")
-        try:
-            import urllib.request
-
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.api_key}"
-            }
-            messages = []
-            if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
-            messages.append({"role": "user", "content": prompt})
-
-            payload = json.dumps({
-                "model": self.model,
-                "messages": messages,
-                "temperature": 0.2
-            }).encode("utf-8")
-
-            req = urllib.request.Request("https://api.openai.com/v1/chat/completions", data=payload, headers=headers)
-            with urllib.request.urlopen(req, timeout=60) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                return data["choices"][0]["message"]["content"]
-        except Exception as e:
-            raise RuntimeError(f"OpenAI API call failed: {e}")
-
-
-def get_llm_client(provider: Optional[str] = None) -> BaseLLMClient:
-    """Factory function for instantiating the appropriate LLM client."""
-    provider = provider or os.environ.get("EDA_LLM_PROVIDER", "rule_based")
-    provider = provider.lower()
-
-    if provider in ("openai", "gpt-4", "gpt-4o"):
-        return OpenAILLMClient()
-    elif provider in ("rule_based", "template", "offline", "builtin"):
+    if prov in ("ollama", "local"):
+        return OllamaProvider(
+            base_url=cfg.base_url,
+            model=cfg.model,
+            temperature=cfg.temperature,
+            timeout=cfg.timeout
+        )
+    elif prov in ("openai_compatible", "vllm", "lmstudio"):
+        return OpenAICompatibleProvider(
+            base_url=cfg.base_url,
+            model=cfg.model,
+            api_key=cfg.api_key,
+            temperature=cfg.temperature,
+            timeout=cfg.timeout
+        )
+    elif prov in ("gemini", "google"):
+        return GeminiProvider(
+            api_key=cfg.api_key,
+            model=cfg.model,
+            temperature=cfg.temperature,
+            timeout=cfg.timeout
+        )
+    elif prov in ("openai", "cloud", "gpt-4", "gpt-4o"):
+        return CloudProvider(
+            api_key=cfg.api_key,
+            model=cfg.model,
+            temperature=cfg.temperature,
+            timeout=cfg.timeout
+        )
+    elif prov in ("rule_based", "template", "offline", "builtin"):
         return RuleBasedLLMClient()
     else:
-        # Default to rule based
-        return RuleBasedLLMClient()
+        # Fallback to Ollama or RuleBased
+        return OllamaProvider(
+            base_url=cfg.base_url,
+            model=cfg.model,
+            temperature=cfg.temperature,
+            timeout=cfg.timeout
+        )

@@ -2,6 +2,11 @@
 
 from .llm_client import (
     BaseLLMClient,
+    CloudProvider,
+    GeminiProvider,
+    LLMProvider,
+    OllamaProvider,
+    OpenAICompatibleProvider,
     OpenAILLMClient,
     RuleBasedLLMClient,
     get_llm_client,
@@ -19,14 +24,19 @@ from .repair_loop import (
 from .testbench_generator import TestbenchGenerator
 
 __all__ = [
+    "LLMProvider",
+    "BaseLLMClient",
+    "OllamaProvider",
+    "OpenAICompatibleProvider",
+    "GeminiProvider",
+    "CloudProvider",
+    "OpenAILLMClient",
+    "RuleBasedLLMClient",
+    "get_llm_client",
     "TestbenchGenerator",
     "VerificationLoop",
     "VerificationLoopResult",
     "IterationRecord",
-    "BaseLLMClient",
-    "RuleBasedLLMClient",
-    "OpenAILLMClient",
-    "get_llm_client",
     "COCOTB_SYSTEM_PROMPT",
     "TESTBENCH_GENERATION_PROMPT",
     "TESTBENCH_REPAIR_PROMPT",

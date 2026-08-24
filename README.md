@@ -112,7 +112,21 @@ pip install -e .
 
 ## 💻 CLI Usage
 
-### 1. Autonomous Verification Loop
+### 1. Local LLM & Provider Configuration
+Configure local models (Ollama, vLLM) or cloud fallbacks without sending proprietary RTL over the internet:
+
+```bash
+# Configure local Ollama with DeepSeek Coder V2
+eda-agent config --provider ollama --model deepseek-coder-v2:16b
+
+# Configure local vLLM / OpenAI-compatible endpoint
+eda-agent config --provider openai_compatible --base-url http://localhost:8000/v1 --model qwen2.5-coder:32b
+
+# Display active configuration
+eda-agent config
+```
+
+### 2. Autonomous Verification Loop
 Synthesize an exhaustive testbench, run the simulation, diagnose failures, and iteratively self-repair:
 
 ```bash
@@ -123,7 +137,18 @@ eda-agent verify examples/rtl/alu_8bit.v
 eda-agent verify examples/rtl/fifo_async.v --max-retries 5
 ```
 
-### 2. Static Timing Analysis (STA) Diagnostics
+### 3. Natural Language Assertion Engine
+Synthesize synthesizable SystemVerilog Assertions (SVA) and Cocotb assertion checkers from plain-English timing specifications:
+
+```bash
+# Generate SVA and cocotb assertions for FIFO ready signal
+eda-agent assert examples/rtl/fifo_async.v --spec "ready drops low when valid is asserted and fifo is full"
+
+# Generate multi-cycle protocol assertion
+eda-agent assert examples/rtl/alu_8bit.v --spec "ack must assert 2 cycles after req rises"
+```
+
+### 4. Static Timing Analysis (STA) Diagnostics
 Parse OpenROAD / Yosys timing reports, inspect critical paths, and generate actionable RTL diff suggestions:
 
 ```bash
@@ -134,18 +159,35 @@ eda-agent analyze-timing examples/logs/openroad_sta_violated.log
 eda-agent analyze-timing examples/logs/openroad_sta_clean.log
 ```
 
-### 3. Parse RTL Interfaces & Display Metadata
+### 5. Parse RTL Interfaces & Display Metadata
 ```bash
 eda-agent parse examples/rtl/fifo_async.v
 eda-agent parse examples/rtl/alu_8bit.v
 ```
 
-### 4. Run Cocotb Simulation Directly
+### 6. Run Cocotb Simulation Directly
 ```bash
 eda-agent sim --dir examples/sim --toplevel fifo_async --module test_fifo_async --clean
 ```
 
-### 5. Check Environment & Toolchain
+### 7. Launch Interactive Web UI Studio & FastAPI Backend
+Start the local web application with real-time waveform visualization, live streaming terminal, dual code editor, and interactive SVG hardware schematics:
+
+```bash
+# Launch Web UI on http://127.0.0.1:8000
+eda-agent ui --port 8000
+```
+- **Interactive Web Studio**: `http://127.0.0.1:8000`
+- **Interactive OpenAPI Docs**: `http://127.0.0.1:8000/docs`
+- **Real-Time WebSocket Stream**: `ws://127.0.0.1:8000/ws/verify`
+
+#### Web UI Architecture & Capabilities:
+- **Left Panel**: Target RTL module explorer, local LLM selector (Ollama status badge), natural language specification prompt input, and 1-click action buttons (*Run Verification*, *Auto-Fix RTL Bug*, *Explain Failure in Simple Terms*, *Export Testbench*).
+- **Center Panel**: Dual code editor view (Verilog RTL on the left, auto-generated Cocotb testbench and SVA assertions on the right).
+- **Right Panel (Top)**: Interactive SVG hardware block diagram rendering input/output ports, bit widths, clock domains, and reset pins.
+- **Bottom Panel**: Live simulation terminal streaming compiler outputs (`iverilog`), testcase execution, and an interactive digital waveform viewer powered by WaveDrom.
+
+### 8. Check Environment & Toolchain
 ```bash
 eda-agent info
 ```

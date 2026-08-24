@@ -13,6 +13,7 @@ from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 
 from eda_agent.analyzers.coverage_analyzer import ResultsAnalyzer, TestSuiteReport
+from eda_agent.analyzers.human_diagnostics import HardwareFailureDiagnosis, HumanDiagnosticsTranslator
 
 
 class FailureType(str, Enum):
@@ -33,6 +34,7 @@ class SimulationDiagnostics(BaseModel):
     failing_testcase: Optional[str] = None
     stack_trace: Optional[str] = None
     line_number: Optional[int] = None
+    human_diagnosis: Optional[HardwareFailureDiagnosis] = None
     raw_stderr: str = ""
     raw_stdout: str = ""
 
@@ -200,6 +202,8 @@ class SimulationRunner:
                 raw_stdout=stdout
             )
 
+        human_diag = HumanDiagnosticsTranslator.translate(combined_logs)
+
         # 4. Assertion errors from test suite report or logs
         if report and (report.failures > 0 or report.errors > 0):
             for tc in report.test_cases:
@@ -214,6 +218,7 @@ class SimulationRunner:
                         error_summary=tc.failure_message or f"Test {tc.name} failed.",
                         failing_testcase=tc.name,
                         stack_trace=cls._extract_traceback(combined_logs),
+                        human_diagnosis=human_diag,
                         raw_stderr=stderr,
                         raw_stdout=stdout
                     )
@@ -224,6 +229,7 @@ class SimulationRunner:
                 failure_type=FailureType.ASSERTION_ERROR,
                 error_summary=f"Assertion Failed: {assertion_m.group(1)}",
                 stack_trace=cls._extract_traceback(combined_logs),
+                human_diagnosis=human_diag,
                 raw_stderr=stderr,
                 raw_stdout=stdout
             )
@@ -237,6 +243,7 @@ class SimulationRunner:
                 failure_type=FailureType.RUNTIME_ERROR,
                 error_summary=summary,
                 stack_trace=traceback_str,
+                human_diagnosis=human_diag,
                 raw_stderr=stderr,
                 raw_stdout=stdout
             )
@@ -244,6 +251,7 @@ class SimulationRunner:
         return SimulationDiagnostics(
             failure_type=FailureType.UNKNOWN_FAILURE,
             error_summary="Simulation exited with non-zero status without recognized error signature.",
+            human_diagnosis=human_diag,
             raw_stderr=stderr,
             raw_stdout=stdout
         )
