@@ -1,0 +1,57 @@
+# Git
+.git
+.gitignore
+
+# Python bytecode and virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Simulation Artifacts & Temporary Files
+sim_build*/
+*.vcd
+*.fst
+*.dump
+dump.vcd
+dump.fst
+results.xml
+*.log
+
+# Frontend & Node
+node_modules/
+ui/node_modules/
+ui/dist/
+
+# IDE & OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store

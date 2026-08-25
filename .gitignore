@@ -8,12 +8,14 @@ build/
 venv/
 .venv/
 
-# Simulation dumps & EDA logs
+# Simulation dumps & temporary artifacts
 sim_build/
 sim_build_*/
 *.vvp
 *.vcd
 *.fst
-*.xml
 results.xml
+
+# Logs (ignore general root logs, but preserve example fixture logs)
 *.log
+!examples/logs/*.log
