@@ -33,8 +33,162 @@
   <!-- WaveDrom Script & Skin for dynamic timing waveform diagrams -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/wavedrom/3.1.0/skins/default.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/wavedrom/3.1.0/wavedrom.min.js"></script>
-  <script type="module" crossorigin src="./assets/index-Bn7MPkVp.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-ByM-JsQn.css">
+  <!-- Prism.js Syntax Highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-verilog.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+    body { font-family: "IBM Plex Sans", "Segoe UI", sans-serif; }
+    .code-editor { font-family: "Fira Code", "Courier New", monospace; tab-size: 4; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #111827; }
+    ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #4B5563; }
+    .pulse-green { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+
+    /* Product surface: a focused hardware instrumentation console. */
+    :root {
+      --ink: #e8edf2;
+      --muted: #7f8c99;
+      --line: #25313b;
+      --panel: #111820;
+      --panel-raised: #17222b;
+      --canvas: #0a0f13;
+      --cyan: #43d9df;
+      --amber: #f6b84b;
+      --green: #72d69a;
+      --red: #f27d7d;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      background-color: var(--canvas) !important;
+      background-image:
+        linear-gradient(rgba(67, 217, 223, .035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(67, 217, 223, .035) 1px, transparent 1px),
+        radial-gradient(circle at 82% -10%, rgba(246, 184, 75, .09), transparent 32%),
+        radial-gradient(circle at 0% 100%, rgba(67, 217, 223, .06), transparent 28%);
+      background-size: 32px 32px, 32px 32px, auto, auto;
+      color: var(--ink) !important;
+      font-family: "Segoe UI", system-ui, sans-serif;
+    }
+    header {
+      height: 68px !important;
+      padding: 0 22px !important;
+      background: rgba(13, 19, 24, .94) !important;
+      border-color: var(--line) !important;
+      box-shadow: 0 1px 0 rgba(255,255,255,.03), 0 12px 30px rgba(0,0,0,.18);
+      position: relative;
+    }
+    header::after {
+      content: "";
+      position: absolute;
+      left: 0; right: 0; bottom: -1px; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--cyan), var(--amber), transparent);
+      opacity: .55;
+    }
+    header > div:first-child > div:first-child {
+      background: linear-gradient(145deg, #1e5961, #123238) !important;
+      border: 1px solid rgba(67,217,223,.38);
+      border-radius: 5px !important;
+      box-shadow: 0 0 24px rgba(67,217,223,.12) !important;
+    }
+    header .bg-gradient-to-r {
+      background-image: linear-gradient(90deg, var(--cyan), var(--amber)) !important;
+      letter-spacing: .01em;
+    }
+    header .bg-eda-card { background: rgba(23,34,43,.82) !important; border-color: #31404b !important; }
+    aside, main, .bg-eda-sidebar { background-color: rgba(13,19,24,.88) !important; }
+    aside { width: 292px !important; border-color: var(--line) !important; }
+    .border-eda-border, .border-b, .border-r { border-color: var(--line) !important; }
+    aside > div { padding: 18px !important; }
+    aside label, .uppercase { letter-spacing: .14em !important; font-size: 10px !important; }
+    select, textarea, #rtl-editor, #tb-editor {
+      background-color: rgba(18,28,36,.92) !important;
+      border-color: #2b3a45 !important;
+      color: var(--ink) !important;
+    }
+    select:focus, textarea:focus { border-color: var(--cyan) !important; box-shadow: 0 0 0 2px rgba(67,217,223,.1); }
+    aside button:not([id]) { transition: transform .18s ease, border-color .18s ease, background .18s ease; }
+    aside button:not([id]):hover { transform: translateX(3px); border-color: rgba(67,217,223,.5) !important; background: #1b2a34 !important; }
+    #btn-generate, #btn-verify { border-radius: 4px !important; letter-spacing: .02em; }
+    #btn-generate { background: #245d69 !important; border: 1px solid rgba(67,217,223,.45); }
+    #btn-verify { background: #b97822 !important; border: 1px solid rgba(246,184,75,.65); box-shadow: 0 0 20px rgba(246,184,75,.16) !important; }
+    #btn-generate:hover { background: #2f7883 !important; }
+    #btn-verify:hover { background: #d18a29 !important; }
+    .code-editor, #rtl-editor, #tb-editor, #terminal-output { font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace !important; }
+    #rtl-editor, #tb-editor { line-height: 1.65 !important; font-size: 12px !important; }
+    .bg-\[\#1e1e1e\] { background: #0d1419 !important; }
+    #schematic-container { background: rgba(7,12,16,.75) !important; position: relative; }
+    #schematic-container::before { content: "SIGNAL MAP / LIVE"; position: absolute; top: 12px; left: 14px; color: rgba(67,217,223,.55); font: 10px "Cascadia Code", monospace; letter-spacing: .14em; }
+    #schematic-container svg rect { fill: #15242b !important; stroke: var(--cyan) !important; }
+    #schematic-container svg text { font-family: "Cascadia Code", monospace; }
+    #schematic-container svg text:first-of-type { fill: var(--amber) !important; }
+    .h-72 { height: 260px !important; }
+    #panel-term { background: #050809 !important; color: #aebbc4 !important; }
+    #terminal-output { text-shadow: 0 0 12px rgba(67,217,223,.08); }
+    #panel-wave, #panel-diag { background: rgba(12,19,24,.94) !important; }
+    #wavedrom-output, #diagnostics-content > div { background: var(--panel) !important; border-color: var(--line) !important; border-radius: 5px !important; }
+    #verify-progress-indicator { color: var(--amber) !important; }
+    @keyframes consoleReveal { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    main > div:first-child { animation: consoleReveal .5s ease both; }
+    main > div:last-child { animation: consoleReveal .65s .08s ease both; }
+    @media (max-width: 900px) {
+      header { padding: 0 12px !important; }
+      header .text-gray-500, header button span { display: none; }
+      aside { width: 240px !important; }
+      .w-80 { width: 230px !important; }
+    }
+
+    /* Keep the workbench dense and legible at laptop widths. */
+    header { min-height: 64px; }
+    header > div:first-child { min-width: 190px; }
+    header .rounded-full { border-radius: 5px !important; padding: 7px 10px !important; }
+    header button { min-height: 34px; }
+    aside { width: 276px !important; }
+    aside > div { padding: 15px !important; }
+    aside .space-y-2 > button { min-height: 52px; }
+    aside select { min-height: 36px; }
+    main > div:first-child > div { min-width: 0; }
+    main > div:first-child > div:nth-child(1), main > div:first-child > div:nth-child(2) { min-width: 290px; }
+    main > div:first-child > div:nth-child(3) { width: 292px !important; }
+    #rtl-editor, #tb-editor { padding: 12px !important; caret-color: var(--cyan); }
+    #rtl-editor::selection, #tb-editor::selection { background: rgba(67,217,223,.22); }
+    #schematic-container svg { max-width: 100%; min-height: 220px; }
+    #schematic-container svg text { font-size: 9px; }
+    #panel-term, #panel-wave, #panel-diag { border-top: 1px solid rgba(67,217,223,.08); }
+    #panel-wave > div:first-child { padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+    #diagnostics-content { max-width: 920px; margin: 0 auto; }
+    #diagnostics-content > div { box-shadow: 0 8px 24px rgba(0,0,0,.14); }
+    button { font-family: "IBM Plex Sans", "Segoe UI", sans-serif; }
+    button:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+    @media (max-width: 1120px) {
+      aside { width: 250px !important; }
+      main > div:first-child > div:nth-child(1), main > div:first-child > div:nth-child(2) { min-width: 250px; }
+      main > div:first-child > div:nth-child(3) { width: 250px !important; }
+      header .rounded-full .text-gray-500 { display: none; }
+    }
+    @media (max-width: 760px) {
+      body { overflow: auto !important; }
+      header { height: auto !important; min-height: 64px; gap: 10px; }
+      header > div:last-child { gap: 6px; }
+      header .rounded-full { display: none; }
+      header button span { display: none; }
+      header button { padding: 8px !important; }
+      body > div:last-of-type { flex-direction: column; overflow: visible; }
+      aside { width: 100% !important; max-height: none; }
+      main { min-height: 900px; overflow: visible; }
+      main > div:first-child { flex-direction: column; overflow: visible; }
+      main > div:first-child > div { min-height: 320px; }
+      main > div:first-child > div:nth-child(3) { width: 100% !important; min-height: 280px; }
+      .h-72 { height: 300px !important; }
+      #bottom-tab-term, #bottom-tab-wave, #bottom-tab-diag { padding-left: 8px; padding-right: 8px; }
+      #bottom-tab-term span, #bottom-tab-wave span, #bottom-tab-diag span { display: none; }
+    }
+  </style>
 </head>
 <body class="bg-[#070B12] text-slate-100 antialiased selection:bg-cyan-500/30 selection:text-cyan-200 overflow-x-hidden min-h-screen">
   <div id="root">
@@ -44,5 +198,349 @@
       <p>Autonomous VLSI Verification & RTL Self-Repair with WaveDrom and Hardware Schematic.</p>
     </noscript>
   </div>
+
+  <!-- APPLICATION LOGIC & WEBSOCKET CLIENT HOOK -->
+  <script>
+    // State
+    let currentModule = "alu_8bit";
+    let moduleExamples = {};
+    let activeModuleSpec = null;
+    let rightTab = "tb";
+    let bottomTab = "term";
+    let ws = null;
+    let simulatorAvailable = false;
+    let latestSimulationLog = "";
+    let latestWaveform = null;
+    let generatedTestbench = "";
+    let generatedSva = "";
+
+    // Initialize
+    document.addEventListener("DOMContentLoaded", async () => {
+      lucide.createIcons();
+      await fetchStatus();
+      await fetchExamples();
+      loadSelectedModule();
+    });
+
+    async function fetchStatus() {
+      try {
+        const res = await fetch("/api/status");
+        const data = await res.json();
+        document.getElementById("header-llm-label").textContent = `${data.llm_provider.toUpperCase()}: ${data.llm_model}`;
+        document.getElementById("llm-provider-select").value = data.llm_provider;
+        document.getElementById("base-url-label").textContent = `Endpoint: ${data.llm_base_url}`;
+        simulatorAvailable = Boolean(data.iverilog && data.vvp);
+        const statusPill = document.getElementById("backend-status-pill");
+        const verifyButton = document.getElementById("btn-verify");
+        const terminal = document.getElementById("terminal-output");
+        if (simulatorAvailable) {
+          statusPill.textContent = "Ready";
+          statusPill.className = "text-[10px] text-emerald-400";
+          terminal.innerHTML = `<span class="text-emerald-400">[SYSTEM]</span> Simulator ready. LLM Provider configured.<br>`;
+        } else {
+          statusPill.textContent = "Simulator unavailable";
+          statusPill.className = "text-[10px] text-rose-400";
+          verifyButton.title = "Install GNU Make and Icarus Verilog to enable verification";
+          terminal.innerHTML = `<span class="text-amber-400">[SYSTEM]</span> Synthesis and parsing ready.<br><span class="text-rose-400">[TOOLCHAIN]</span> GNU Make + Icarus Verilog are required for verification.<br>`;
+        }
+      } catch (err) {
+        console.warn("Status fetch failed", err);
+        document.getElementById("backend-status-pill").textContent = "Backend unavailable";
+        document.getElementById("backend-status-pill").className = "text-[10px] text-rose-400";
+      }
+    }
+
+    async function fetchExamples() {
+      try {
+        const res = await fetch("/api/examples");
+        moduleExamples = await res.json();
+      } catch (err) {
+        console.warn("Examples fetch failed", err);
+      }
+    }
+
+    function loadSelectedModule() {
+      const select = document.getElementById("select-module");
+      const modKey = select.value;
+      
+      if (moduleExamples[modKey]) {
+        const item = moduleExamples[modKey];
+        currentModule = item.name;
+        document.getElementById("rtl-editor").value = item.code;
+        document.getElementById("rtl-tab-title").textContent = modKey;
+        document.getElementById("schematic-module-name").textContent = item.name;
+        document.getElementById("nl-spec-input").value = item.spec_preset || "";
+      }
+      parseRTL();
+      generateTestbench();
+    }
+
+    async function parseRTL() {
+      const code = document.getElementById("rtl-editor").value;
+      try {
+        const res = await fetch("/api/parse", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code })
+        });
+        const modules = await res.json();
+        if (modules && modules.length > 0) {
+          activeModuleSpec = modules[0];
+          document.getElementById("port-count-badge").textContent = `${activeModuleSpec.ports.length} ports`;
+          renderSchematic(activeModuleSpec);
+        }
+      } catch (err) {
+        console.warn("Parse RTL error:", err);
+      }
+    }
+
+    function renderSchematic(spec) {
+      if (!spec) return;
+      const container = document.getElementById("schematic-container");
+      
+      const inputs = spec.ports.filter(p => p.direction.toLowerCase().includes("input"));
+      const outputs = spec.ports.filter(p => p.direction.toLowerCase().includes("output"));
+
+      const height = Math.max(220, Math.max(inputs.length, outputs.length) * 28 + 60);
+      const width = 280;
+
+      let svg = `<svg viewBox="0 0 ${width} ${height}" class="w-full h-full font-mono text-xs">`;
+      
+      // Module Box
+      svg += `<rect x="70" y="20" width="140" height="${height - 40}" rx="6" fill="#1F2937" stroke="#3B82F6" stroke-width="2" />`;
+      svg += `<text x="140" y="45" fill="#60A5FA" font-weight="bold" text-anchor="middle" font-size="12">${spec.name}</text>`;
+      
+      // Inputs
+      inputs.forEach((p, idx) => {
+        const y = 60 + idx * 24;
+        const isClk = p.is_clock;
+        const color = isClk ? "#34D399" : (p.is_reset ? "#F87171" : "#9CA3AF");
+        
+        // Pin line
+        svg += `<line x1="15" y1="${y}" x2="70" y2="${y}" stroke="${color}" stroke-width="1.5" />`;
+        if (isClk) {
+          // Clock triangle
+          svg += `<path d="M 62 ${y-4} L 70 ${y} L 62 ${y+4}" fill="none" stroke="#34D399" stroke-width="1.5" />`;
+        }
+        svg += `<text x="10" y="${y+3}" fill="${color}" font-size="9" text-anchor="end">${p.name}${p.width !== '1' ? '['+p.width+']' : ''}</text>`;
+      });
+
+      // Outputs
+      outputs.forEach((p, idx) => {
+        const y = 60 + idx * 24;
+        const color = "#38BDF8";
+        
+        // Pin line
+        svg += `<line x1="210" y1="${y}" x2="265" y2="${y}" stroke="${color}" stroke-width="1.5" />`;
+        svg += `<circle cx="210" cy="${y}" r="2.5" fill="${color}" />`;
+        svg += `<text x="270" y="${y+3}" fill="${color}" font-size="9" text-anchor="start">${p.name}${p.width !== '1' ? '['+p.width+']' : ''}</text>`;
+      });
+
+      svg += `</svg>`;
+      container.innerHTML = svg;
+    }
+
+    async function generateTestbench() {
+      const code = document.getElementById("rtl-editor").value;
+      const spec = document.getElementById("nl-spec-input").value;
+      const badge = document.getElementById("tb-status-badge");
+      
+      badge.textContent = "Synthesizing...";
+      badge.className = "text-[10px] px-2 py-0.5 rounded bg-blue-950 text-blue-400 font-mono";
+
+      try {
+        const res = await fetch("/api/generate-test", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code, module_name: currentModule, spec })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Testbench generation failed");
+        generatedTestbench = data.testbench || "";
+        generatedSva = data.sva_assertion || "No SVA assertion was generated for this specification.";
+        document.getElementById("tb-editor").value = rightTab === "sva" ? generatedSva : generatedTestbench;
+        badge.textContent = "Generated";
+        badge.className = "text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 font-mono";
+      } catch (err) {
+        badge.textContent = "Error";
+        badge.className = "text-[10px] px-2 py-0.5 rounded bg-rose-950 text-rose-400 font-mono";
+      }
+    }
+
+    function runVerification() {
+      switchBottomTab('term');
+      const term = document.getElementById("terminal-output");
+      const progress = document.getElementById("verify-progress-indicator");
+      if (!simulatorAvailable) {
+        progress.classList.add("hidden");
+        term.innerHTML = `<span class="text-rose-400 font-bold">[VERIFICATION BLOCKED]</span> Install GNU Make and Icarus Verilog, then restart the EDA-Agent server.\n`;
+        return;
+      }
+      progress.classList.remove("hidden");
+      latestSimulationLog = "";
+      latestWaveform = null;
+
+      term.innerHTML = `<span class="text-cyan-400">[EDA-AGENT]</span> Initializing WebSocket verification session...\n`;
+
+      const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${proto}//${window.location.host}/ws/verify`;
+
+      if (ws) {
+        ws.close();
+      }
+
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        term.innerHTML += `<span class="text-emerald-400">[WS CONNECTED]</span> Streaming compiler logs and test execution...\n`;
+        const code = document.getElementById("rtl-editor").value;
+        ws.send(JSON.stringify({
+          rtl_code: code,
+          module_name: currentModule,
+          max_retries: 3
+        }));
+      };
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.stdout) latestSimulationLog += `\n${msg.stdout}`;
+        if (msg.event === "start") {
+          term.innerHTML += `\n<span class="text-yellow-400">⚡ ${msg.message}</span>\n`;
+        } else if (msg.event === "iteration") {
+          const color = msg.success ? "text-emerald-400" : "text-rose-400";
+          term.innerHTML += `\n<span class="${color}">[ITERATION ${msg.iteration}] Action: ${msg.action} | Pass Rate: ${msg.pass_rate}%</span>\n${msg.stdout}\n`;
+        } else if (msg.event === "waveform") {
+          latestWaveform = msg.wavedrom;
+          renderWaveDromData(msg.wavedrom);
+        } else if (msg.event === "complete") {
+          progress.classList.add("hidden");
+          const color = msg.success ? "text-emerald-400 font-bold" : "text-rose-400 font-bold";
+          term.innerHTML += `\n<span class="${color}">🏆 ${msg.summary}</span>\n`;
+          term.scrollTop = term.scrollHeight;
+        } else if (msg.event === "error") {
+          progress.classList.add("hidden");
+          term.innerHTML += `\n<span class="text-rose-500 font-bold">[ERROR] ${msg.message}</span>\n`;
+        }
+        term.scrollTop = term.scrollHeight;
+      };
+
+      ws.onerror = (err) => {
+        progress.classList.add("hidden");
+        term.innerHTML += `\n<span class="text-rose-500">[WS ERROR] Connection failed. Check server status.</span>\n`;
+      };
+    }
+
+    function renderWaveDromData(waveData) {
+      const container = document.getElementById("wavedrom-output");
+      container.innerHTML = "";
+      const script = document.createElement("script");
+      script.type = "WaveDrom";
+      script.text = JSON.stringify(waveData);
+      container.appendChild(script);
+      try {
+        WaveDrom.ProcessAll();
+      } catch (e) {
+        console.warn("WaveDrom render error:", e);
+      }
+    }
+
+    function renderSampleWaveform() {
+      const sampleWave = {
+        signal: [
+          { name: "clk", wave: "p......." },
+          { name: "rst_n", wave: "0.1....." },
+          { name: "opcode[2:0]", wave: "=...==..", data: ["ADD", "SUB", "XOR"] },
+          { name: "result[7:0]", wave: "x.======.", data: ["0x00", "0x14", "0xFF", "0x55"] },
+          { name: "zero", wave: "0.1.0..." }
+        ],
+        head: { text: "Digital Waveform Capture" },
+        foot: { tick: 0 }
+      };
+      renderWaveDromData(latestWaveform || sampleWave);
+    }
+
+    async function autoFixRTL() {
+      switchBottomTab('term');
+      const term = document.getElementById("terminal-output");
+      runVerification();
+      term.innerHTML += `\n<span class="text-purple-400 font-bold">[AUTO-FIX] Closed-loop diagnostic repair started.</span>\n`;
+    }
+
+    async function explainFailure() {
+      switchBottomTab('diag');
+      const diagContainer = document.getElementById("diagnostics-content");
+      diagContainer.innerHTML = '<div class="p-4 text-gray-400">Analyzing latest simulation output...</div>';
+      try {
+        const res = await fetch('/api/diagnose', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ log: latestSimulationLog || 'No simulation output is available yet.', code: document.getElementById('rtl-editor').value }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Diagnostic analysis failed');
+        diagContainer.innerHTML = `<div class="space-y-3"><div class="p-3 bg-eda-card rounded border border-eda-border"><span class="text-xs font-bold text-amber-400 uppercase tracking-wider block mb-1">Digital Engineering Root Cause</span><p class="text-gray-300">${data.engineering_summary}</p></div><div class="p-3 bg-eda-card rounded border border-eda-border"><span class="text-xs font-bold text-emerald-400 uppercase tracking-wider block mb-1">Hardware Diagnosis</span><p class="text-gray-300">${data.hardware_diagnosis}</p></div><pre class="p-3 bg-black/60 text-gray-400 overflow-x-auto">${data.raw_error || 'No raw error captured.'}</pre></div>`;
+      } catch (err) { diagContainer.innerHTML = `<div class="p-4 text-rose-400">${err.message}</div>`; }
+    }
+
+    async function analyzeTiming() {
+      switchBottomTab('diag');
+      const diagContainer = document.getElementById("diagnostics-content");
+      diagContainer.innerHTML = '<div class="p-4 text-gray-400">Parsing latest timing output...</div>';
+      try {
+        const res = await fetch('/api/timing', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ log: latestSimulationLog }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'STA analysis failed');
+        diagContainer.innerHTML = `<div class="space-y-3"><div class="grid grid-cols-2 gap-3"><div class="p-3 bg-eda-card rounded border border-eda-border"><span class="text-[10px] text-gray-400 uppercase block">Setup WNS</span><span class="text-lg font-bold font-mono">${data.wns_setup} ns</span></div><div class="p-3 bg-eda-card rounded border border-eda-border"><span class="text-[10px] text-gray-400 uppercase block">Setup TNS</span><span class="text-lg font-bold font-mono">${data.tns_setup} ns</span></div></div><div class="p-3 text-cyan-300">Timing status: ${data.is_clean ? 'CLEAN' : 'VIOLATED'}</div>${(data.recommendations || []).map(item => `<div class="p-3 bg-eda-card rounded border border-eda-border text-gray-300">${item}</div>`).join('')}</div>`;
+      } catch (err) { diagContainer.innerHTML = `<div class="p-4 text-rose-400">${err.message}</div>`; }
+    }
+
+    function switchRightTab(tab) {
+      rightTab = tab;
+      const tabTb = document.getElementById("tab-tb");
+      const tabSva = document.getElementById("tab-sva");
+      if (tab === 'tb') {
+        tabTb.className = "px-2.5 py-1 rounded font-semibold text-emerald-400 bg-emerald-950 border border-emerald-800 flex items-center space-x-1";
+        tabSva.className = "px-2.5 py-1 rounded text-gray-400 hover:text-white flex items-center space-x-1";
+      } else {
+        tabSva.className = "px-2.5 py-1 rounded font-semibold text-purple-400 bg-purple-950 border border-purple-800 flex items-center space-x-1";
+        tabTb.className = "px-2.5 py-1 rounded text-gray-400 hover:text-white flex items-center space-x-1";
+      }
+      document.getElementById("tb-editor").value = tab === "sva" ? (generatedSva || "Generate a testbench with a specification first.") : generatedTestbench;
+    }
+
+    function switchBottomTab(tab) {
+      bottomTab = tab;
+      document.getElementById("panel-term").classList.toggle("hidden", tab !== 'term');
+      document.getElementById("panel-wave").classList.toggle("hidden", tab !== 'wave');
+      document.getElementById("panel-diag").classList.toggle("hidden", tab !== 'diag');
+
+      document.getElementById("bottom-tab-term").className = tab === 'term' ? "px-3 py-1 font-semibold text-cyan-400 bg-cyan-950 border-b-2 border-cyan-400 flex items-center space-x-1.5" : "px-3 py-1 text-gray-400 hover:text-white flex items-center space-x-1.5";
+      document.getElementById("bottom-tab-wave").className = tab === 'wave' ? "px-3 py-1 font-semibold text-emerald-400 bg-emerald-950 border-b-2 border-emerald-400 flex items-center space-x-1.5" : "px-3 py-1 text-gray-400 hover:text-white flex items-center space-x-1.5";
+      document.getElementById("bottom-tab-diag").className = tab === 'diag' ? "px-3 py-1 font-semibold text-amber-400 bg-amber-950 border-b-2 border-amber-400 flex items-center space-x-1.5" : "px-3 py-1 text-gray-400 hover:text-white flex items-center space-x-1.5";
+
+      if (tab === 'wave' && latestWaveform) renderWaveDromData(latestWaveform);
+    }
+
+    function setSpecPreset(text) {
+      document.getElementById("nl-spec-input").value = text;
+      generateTestbench();
+    }
+
+    function exportTestbench() {
+      const content = generatedTestbench || document.getElementById("tb-editor").value;
+      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `test_${currentModule}.py`;
+      a.click();
+    }
+
+    async function updateProviderConfig() {
+      const provider = document.getElementById('llm-provider-select').value;
+      try {
+        const res = await fetch('/api/config/provider', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ provider }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Provider update failed');
+        document.getElementById('header-llm-label').textContent = `${data.llm_provider.toUpperCase()}: ${data.llm_model}`;
+        document.getElementById('base-url-label').textContent = `Endpoint: ${data.llm_base_url}`;
+      } catch (err) { document.getElementById('terminal-output').innerHTML += `\n<span class="text-rose-400">[CONFIG ERROR] ${err.message}</span>\n`; }
+    }
+  </script>
 </body>
 </html>

@@ -7,6 +7,9 @@ dist/
 build/
 venv/
 .venv/
+.venv*/
+.tools/
+hoco/
 
 # Simulation dumps & temporary artifacts
 sim_build/

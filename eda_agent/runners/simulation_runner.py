@@ -66,7 +66,15 @@ class MakeSimulationCommand(SimulationCommand):
     """Build GNU Make commands used by the cocotb simulation Makefile."""
 
     def build(self, clean: bool = False) -> List[str]:
-        return ["make", "clean"] if clean else ["make"]
+        project_make = Path(__file__).resolve().parents[2] / ".tools" / "make" / "bin" / ("make.exe" if os.name == "nt" else "make")
+        venv_make = Path(sys.executable).parent / ("pymake.exe" if os.name == "nt" else "pymake")
+        make = str(project_make) if project_make.is_file() else (shutil.which("make") or (str(venv_make) if venv_make.is_file() else "make"))
+        args = [make]
+        if os.name == "nt":
+            args.extend(["SHELL=C:/Program Files/Git/usr/bin/sh.exe", f"PYTHON_BIN={sys.executable.replace(chr(92), '/')}"])
+        if clean:
+            args.append("clean")
+        return args
 
 
 class SimulationRunner:
@@ -94,9 +102,19 @@ class SimulationRunner:
         env = os.environ.copy()
         py_bin_dir = str(Path(sys.executable).parent)
         user_local_bin = str(Path.home() / ".local" / "bin")
+        project_tool_bin = str(Path(__file__).resolve().parents[2] / ".tools" / "iverilog" / "bin")
+        project_make_bin = str(Path(__file__).resolve().parents[2] / ".tools" / "make" / "bin")
+        git_bin = str(Path(os.environ.get("ProgramFiles", "C:\\Program Files")) / "Git" / "usr" / "bin")
         current_path = env.get("PATH", "")
-        env["PATH"] = os.pathsep.join((py_bin_dir, user_local_bin, current_path))
+        env["PATH"] = os.pathsep.join((py_bin_dir, project_tool_bin, project_make_bin, git_bin, user_local_bin, current_path))
         env["COCOTB_IGNORE_PYTHON_REQUIRES"] = "1"
+        env["PYTHON"] = sys.executable
+        site_packages = Path(sys.executable).parent.parent / "Lib" / "site-packages"
+        if site_packages.is_dir():
+            env["PYTHONPATH"] = os.pathsep.join((str(site_packages), env.get("PYTHONPATH", "")))
+        git_sh = Path(os.environ.get("ProgramFiles", "C:\\Program Files")) / "Git" / "usr" / "bin" / "sh.exe"
+        if git_sh.is_file():
+            env["SHELL"] = str(git_sh)
         env["SIM"] = simulator
         env["WAVES"] = "1" if waves else "0"
 
