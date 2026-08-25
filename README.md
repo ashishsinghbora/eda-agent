@@ -97,7 +97,7 @@
 
 ```bash
 # Clone repository
-git clone https://github.com/example/eda-agent.git
+git clone https://github.com/ashishsinghbora/eda-agent.git
 cd eda-agent
 
 # Set up Python virtual environment
