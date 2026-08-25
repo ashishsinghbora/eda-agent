@@ -13,6 +13,17 @@
 
 ---
 
+---
+title: EDA-Agent
+---
+
+**EDA-Agent** is an industry-grade...
+
+
+**EDA-Agent** is an industry-grade autonomous Electronic Design Automation (EDA) and VLSI verification assistant. It bridges hardware description languages (SystemVerilog/Verilog) with modern Python verification workflows (`cocotb`), providing automated RTL interface extraction, Verilator linting, Yosys gate-level synthesizability checking, testbench synthesis, closed-loop simulation self-repair, Static Timing Analysis (STA) diagnostics, and interactive waveform visualization.
+
+---
+
 ## 🏛️ System Architecture & Autonomous Flow
 
 ```mermaid
