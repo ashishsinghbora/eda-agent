@@ -34,7 +34,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Create dedicated non-root EDA user
-RUN useradd -m -s /bin/bash -u 1000 edauser && \
+RUN (userdel -r ubuntu 2>/dev/null || true) && \
+    useradd -m -s /bin/bash -u 1000 edauser && \
     mkdir -p /workspace /home/edauser/.eda-agent && \
     chown -R edauser:edauser /workspace /home/edauser
 

@@ -19,3 +19,8 @@ results.xml
 # Logs (ignore general root logs, but preserve example fixture logs)
 *.log
 !examples/logs/*.log
+
+# Node & UI artifacts
+ui/node_modules/
+ui/dist/
+.vite/

@@ -1,0 +1,191 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-primary: #070B12;
+    --bg-secondary: #0B111D;
+    --bg-tertiary: #10192A;
+    --border-subtle: #20304C;
+    --accent-cyan: #00F0FF;
+    --accent-purple: #A855F7;
+    --accent-emerald: #10B981;
+    --accent-amber: #F59E0B;
+  }
+
+  body {
+    background-color: var(--bg-primary);
+    color: #E2E8F0;
+    font-family: 'Inter', sans-serif;
+  }
+
+  code, pre, kbd {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0B111D;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #20304C;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #334A70;
+}
+
+/* Cyber Matrix & Grid Backgrounds */
+.cyber-grid {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(0, 240, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 240, 255, 0.035) 1px, transparent 1px);
+}
+
+.cyber-dots {
+  background-size: 24px 24px;
+  background-image: radial-gradient(rgba(0, 240, 255, 0.1) 1px, transparent 1px);
+}
+
+/* Glassmorphism */
+.glass-panel {
+  background: rgba(16, 25, 42, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(32, 48, 76, 0.8);
+}
+
+.glass-panel-glow {
+  background: rgba(16, 25, 42, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  box-shadow: 0 0 25px rgba(0, 240, 255, 0.07);
+}
+
+/* Glow Badges & Accents */
+.glow-text-cyan {
+  text-shadow: 0 0 16px rgba(0, 240, 255, 0.6);
+}
+
+.glow-text-purple {
+  text-shadow: 0 0 16px rgba(168, 85, 247, 0.6);
+}
+
+.glow-text-emerald {
+  text-shadow: 0 0 16px rgba(16, 185, 129, 0.6);
+}
+
+/* Prism syntax highlighting customized for Cyber Dark Theme */
+code[class*="language-"],
+pre[class*="language-"] {
+  color: #e2e8f0;
+  background: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  direction: ltr;
+  text-align: left;
+  white-space: pre;
+  word-spacing: normal;
+  word-break: normal;
+  tab-size: 4;
+  hyphens: none;
+}
+
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: #64748B;
+  font-style: italic;
+}
+
+.token.punctuation {
+  color: #94A3B8;
+}
+
+.token.property,
+.token.tag,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol {
+  color: #F59E0B;
+}
+
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin {
+  color: #10B981;
+}
+
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string {
+  color: #00F0FF;
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+  color: #A855F7;
+  font-weight: 600;
+}
+
+.token.function,
+.token.class-name {
+  color: #38BDF8;
+}
+
+.token.regex,
+.token.important,
+.token.variable {
+  color: #EC4899;
+}
+
+/* Mermaid graph dark theme tweaks */
+.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mermaid .node rect,
+.mermaid .node circle,
+.mermaid .node ellipse,
+.mermaid .node polygon {
+  fill: #10192A !important;
+  stroke: #00F0FF !important;
+  stroke-width: 1.5px !important;
+}
+
+.mermaid .node .label {
+  color: #F8FAFC !important;
+  font-family: 'JetBrains Mono', monospace !important;
+}
+
+.mermaid .edgePath .path {
+  stroke: #64748B !important;
+  stroke-width: 1.5px !important;
+}
+
+.mermaid .edgeLabel {
+  background-color: #0B111D !important;
+  color: #94A3B8 !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 11px !important;
+}

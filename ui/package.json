@@ -2,28 +2,35 @@
   "name": "eda-agent-ui",
   "version": "0.1.0",
   "private": true,
-  "description": "Modern React & Tailwind Frontend for EDA-Agent Hardware Studio",
+  "type": "module",
+  "description": "Modern React & Tailwind Frontend for EDA-Agent Documentation & Hardware Studio",
   "scripts": {
     "dev": "vite",
     "build": "vite build --outDir ../eda_agent/server/static",
+    "build:docs": "vite build --outDir ../docs",
+    "build:all": "vite build --outDir ../eda_agent/server/static && vite build --outDir ../docs",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/prismjs": "^1.26.6",
+    "canvas-confetti": "^1.9.4",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.400.0",
+    "mermaid": "^11.17.2",
+    "prismjs": "^1.30.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "lucide-react": "^0.400.0",
-    "@monaco-editor/react": "^4.6.0",
-    "clsx": "^2.1.1",
-    "tailwind-merge": "^2.3.0"
+    "tailwind-merge": "^2.6.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.1",
-    "autoprefixer": "^10.4.19",
-    "postcss": "^8.4.38",
-    "tailwindcss": "^3.4.4",
-    "typescript": "^5.4.5",
-    "vite": "^5.3.1"
+    "@vitejs/plugin-react": "^4.7.0",
+    "autoprefixer": "^10.5.4",
+    "postcss": "^8.5.26",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.21"
   }
 }
