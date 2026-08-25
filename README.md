@@ -13,14 +13,6 @@
 
 ---
 
----
-title: EDA-Agent
----
-
-**EDA-Agent** is an industry-grade...
-
-
-**EDA-Agent** is an industry-grade autonomous Electronic Design Automation (EDA) and VLSI verification assistant. It bridges hardware description languages (SystemVerilog/Verilog) with modern Python verification workflows (`cocotb`), providing automated RTL interface extraction, Verilator linting, Yosys gate-level synthesizability checking, testbench synthesis, closed-loop simulation self-repair, Static Timing Analysis (STA) diagnostics, and interactive waveform visualization.
 
 ---
 
@@ -28,20 +20,20 @@ title: EDA-Agent
 
 ```mermaid
 flowchart TD
-    A[RTL Source .v / .sv] --> B[RTL Interface Parser]
-    B --> C[Verilator Linter]
+    A["RTL Source (.v / .sv)"] --> B["RTL Interface Parser"]
+    B --> C["Verilator Linter"]
     C -->|Syntax / Linter Diagnostics| D{Lint Clean?}
-    D -->|No| E[RTL Auto-Repair Engine]
+    D -->|No| E["RTL Auto-Repair Engine"]
     E --> C
-    D -->|Yes| F[Yosys Synthesizability Checker]
+    D -->|Yes| F["Yosys Synthesizability Checker"]
     F -->|Gate-level Check & Cell Counts| G{Synthesizable?}
     G -->|No| E
-    G -->|Yes| H[Autonomous Cocotb Testbench Generator]
-    H --> I[Headless Simulation Harness (Icarus / Cocotb)]
+    G -->|Yes| H["Autonomous Cocotb Testbench Generator"]
+    H --> I["Headless Simulation Harness (Icarus / Cocotb)"]
     I --> J{Simulation Passes?}
-    J -->|Yes| K[Verification Succeeded: VCD Waveforms & Reports]
-    J -->|No| L[Hardware Diagnostic & Triage Engine]
-    L -->|Traceback & Signal Mismatch Context| M[Closed-Loop Testbench / RTL Repair]
+    J -->|Yes| K["Verification Succeeded: VCD Waveforms & Reports"]
+    J -->|No| L["Hardware Diagnostic & Triage Engine"]
+    L -->|Traceback & Signal Mismatch Context| M["Closed-Loop Testbench / RTL Repair"]
     M --> I
 ```
 
