@@ -85,6 +85,10 @@ class TimingRequest(BaseModel):
     log: str = Field(description="Raw OpenROAD / Yosys timing log")
 
 
+class ProviderUpdateRequest(BaseModel):
+    provider: str = Field(description="LLM provider name")
+
+
 # --- HTTP Endpoints ---
 
 @app.get("/api/status", response_model=StatusResponse)
@@ -92,7 +96,8 @@ async def get_status() -> StatusResponse:
     """Return environment toolchain and local LLM configuration."""
     cfg = load_config()
     local_bin = str(Path.home() / ".local" / "bin")
-    search_path = os.pathsep.join((local_bin, os.environ.get("PATH", "")))
+    project_tool_bin = str(Path(__file__).resolve().parents[2] / ".tools" / "iverilog" / "bin")
+    search_path = os.pathsep.join((project_tool_bin, local_bin, os.environ.get("PATH", "")))
     iverilog_bin = shutil.which("iverilog", path=search_path)
     vvp_bin = shutil.which("vvp", path=search_path)
     verilator_bin = shutil.which("verilator")
@@ -107,6 +112,17 @@ async def get_status() -> StatusResponse:
         llm_model=cfg.model,
         llm_base_url=cfg.base_url
     )
+
+
+@app.post("/api/config/provider", response_model=StatusResponse)
+async def update_provider(req: ProviderUpdateRequest) -> StatusResponse:
+    """Persist the selected LLM provider and return refreshed environment status."""
+    allowed = {"ollama", "openai_compatible", "gemini", "openai", "rule_based"}
+    if req.provider not in allowed:
+        raise HTTPException(status_code=400, detail=f"Unsupported provider: {req.provider}")
+    from eda_agent.config import update_config
+    update_config(provider=req.provider)
+    return await get_status()
 
 
 @app.get("/api/examples")
@@ -170,8 +186,9 @@ async def generate_testbench(req: GenerateTestRequest) -> GenerateTestResponse:
         assert_gen = AssertionGenerator()
         gen_assert = assert_gen.generate(spec_text=req.spec, module_spec=spec)
         sva_code = gen_assert.sva_code
-        # Append cocotb checker into testbench
-        tb_code += f"\n\n# --- Natural Language Assertion Checker ---\n{gen_assert.cocotb_code}\n"
+        checker_code = gen_assert.cocotb_code
+        if "@cocotb.test" not in checker_code and "module dut_module" not in checker_code:
+            tb_code += f"\n\n# --- Natural Language Assertion Checker ---\n{checker_code}\n"
 
     return GenerateTestResponse(
         testbench=tb_code,

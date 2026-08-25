@@ -93,20 +93,58 @@
 
 ### Prerequisites
 - **Python 3.10+**
+- **GNU Make**
 - **Icarus Verilog (`iverilog`)** and **`vvp`**
+- **Git Bash** on Windows. Cocotb's Makefiles use Unix shell utilities such as `sh`, `tr`, and `uname`.
+
+The application can discover a repository-local toolchain under `.tools/iverilog/bin` and `.tools/make/bin`. This is useful on Windows when machine-wide installation requires administrator access. If no local tools are present, install GNU Make and Icarus Verilog through your operating system package manager and ensure both `iverilog` and `vvp` are on `PATH`.
 
 ```bash
 # Clone repository
 git clone https://github.com/ashishsinghbora/eda-agent.git
 cd eda-agent
 
-# Set up Python virtual environment
+# Set up Python virtual environment (Linux/macOS)
 python3 -m venv .venv
 source .venv/bin/activate
+
+# Windows PowerShell equivalent
+py -3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
 
 # Install in editable mode
 pip install -e .
 ```
+
+### Windows: repository-local simulator setup
+
+If you cannot install packages globally, unpack the 64-bit Icarus archive into `.tools/iverilog` so that these files exist:
+
+```text
+.tools/iverilog/bin/iverilog.exe
+.tools/iverilog/bin/vvp.exe
+```
+
+This workspace includes the archive used for that setup under `hoco/ChocolateyScratch/iverilog/11.0.0/tools/_archives`. From the repository root, PowerShell can extract it with:
+
+```powershell
+New-Item -ItemType Directory -Force .tools/iverilog | Out-Null
+Expand-Archive `
+   -Path hoco/ChocolateyScratch/iverilog/11.0.0/tools/_archives/iverilog-mingw32-w64-x86_64-11.0.zip `
+   -DestinationPath .tools/iverilog -Force
+```
+
+The GNU Make archive is not part of the Icarus package. Download or install a real GNU Make binary and place `make.exe` at `.tools/make/bin/make.exe`, or install it system-wide.
+
+The repository's simulation runner automatically adds this directory to the subprocess `PATH`. It also looks for `.tools/make/bin/make.exe`, then a system `make`, and finally the virtual-environment fallback. A real GNU Make executable is required for the Cocotb Makefile; `pymake` is not compatible with Cocotb's conditional Makefile syntax.
+
+For a normal Windows installation, install GNU Make and Icarus Verilog with an elevated package-manager shell, then open a new terminal so the updated `PATH` is visible:
+
+```powershell
+choco install iverilog make -y
+```
+
+Git Bash is normally installed with Git for Windows. The runner uses `C:\Program Files\Git\usr\bin\sh.exe` when it is available.
 
 ---
 
@@ -170,6 +208,8 @@ eda-agent parse examples/rtl/alu_8bit.v
 eda-agent sim --dir examples/sim --toplevel fifo_async --module test_fifo_async --clean
 ```
 
+The simulation runner sets `SIM`, `TOPLEVEL`, `MODULE`, `SIM_BUILD`, and `WAVES` for the example Makefile. Build artifacts and Cocotb reports are written below `examples/sim/sim_build_<toplevel>`.
+
 ### 7. Launch Interactive Web UI Studio & FastAPI Backend
 Start the local web application with real-time waveform visualization, live streaming terminal, dual code editor, and interactive SVG hardware schematics:
 
@@ -186,6 +226,53 @@ eda-agent ui --port 8000
 - **Center Panel**: Dual code editor view (Verilog RTL on the left, auto-generated Cocotb testbench and SVA assertions on the right).
 - **Right Panel (Top)**: Interactive SVG hardware block diagram rendering input/output ports, bit widths, clock domains, and reset pins.
 - **Bottom Panel**: Live simulation terminal streaming compiler outputs (`iverilog`), testcase execution, and an interactive digital waveform viewer powered by WaveDrom.
+
+#### Web UI workflow
+
+1. Select `alu_8bit.v` or `fifo_async.v`, or choose **Custom RTL Buffer** and edit the RTL editor.
+2. Enter a natural-language requirement or select a preset prompt. The **Synthesize TB** button calls `POST /api/generate-test` and updates the testbench editor.
+3. Use the **testbench.py** and **SVA Assertions** tabs to switch between generated Cocotb code and generated SVA/checker code. SVA is generated when a specification is supplied.
+4. Click **Refresh Diagram** after changing RTL. The UI calls `POST /api/parse` and redraws the module ports and schematic.
+5. Click **Run Verification** to open `/ws/verify`. The server runs the generate, simulate, diagnose, and repair loop, streams iteration records, and displays any WaveDrom data produced by the simulation.
+6. **Auto-Fix RTL Bug** starts the same closed-loop verification flow and labels the terminal output as a repair run.
+7. **Explain Failure in Simple Terms** sends the latest simulator output and RTL to `POST /api/diagnose`, then displays the engineering summary, hardware diagnosis, and raw error.
+8. **Analyze Static Timing (STA)** sends the latest available log to `POST /api/timing` and displays WNS, TNS, timing status, and recommendations. It requires an OpenSTA/Yosys-style timing log; ordinary simulator output may parse as a clean report with zero metrics.
+9. **Refresh Wave** displays the latest captured waveform. If no simulation waveform exists yet, it displays the built-in sample waveform as a visual placeholder.
+10. The provider selector persists the selected provider through `POST /api/config/provider`. It changes the configured inference backend; it does not install or start Ollama, vLLM, Gemini, or OpenAI services.
+11. **Export Testbench** downloads the generated Cocotb testbench as `test_<module>.py`.
+
+#### Backend endpoints
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/status` | Python, simulator, and LLM configuration status |
+| `GET /api/examples` | Bundled RTL examples and specification presets |
+| `POST /api/parse` | Parse RTL and return module metadata |
+| `POST /api/generate-test` | Generate a Cocotb testbench and optional SVA checker |
+| `POST /api/diagnose` | Translate simulator failures into hardware diagnostics |
+| `POST /api/timing` | Parse OpenSTA/Yosys timing reports |
+| `POST /api/config/provider` | Persist the selected LLM provider |
+| `WS /ws/verify` | Stream verification and repair-loop events |
+
+### Verification troubleshooting
+
+The UI checks `/api/status` on startup. If either `iverilog` or `vvp` is missing, it intentionally shows **Simulator unavailable** and disables the verification workflow. This is a prerequisite warning, not a WebSocket failure.
+
+Check the status directly:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/status
+```
+
+Verification is ready only when the response contains non-null paths for both `iverilog` and `vvp`. After installing or unpacking the tools, restart the server and reload the browser page. On Windows, also confirm Git Bash exists at `C:\Program Files\Git\usr\bin\sh.exe`.
+
+Common failure messages:
+
+- **`Simulator unavailable`**: Icarus or VVP is not discoverable. Check `.tools/iverilog/bin` or system `PATH`.
+- **`make: ... No rule to make target`**: GNU Make is missing or a Python `pymake` substitute is being selected. Install real GNU Make or place it at `.tools/make/bin/make.exe`.
+- **`tr is not recognized` / `uname ... failed`**: Git Bash utilities are not available to the Make subprocess. Install Git for Windows and restart the server.
+- **Port 8000 already in use**: use another port, for example `eda-agent ui --port 8001`, then open `http://127.0.0.1:8001`.
+- **Ollama connection warnings**: the generator falls back to the built-in rule-based engine when the configured LLM endpoint is unavailable. Simulation still requires the simulator toolchain.
 
 ### 8. Check Environment & Toolchain
 ```bash

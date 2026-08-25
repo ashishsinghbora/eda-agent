@@ -48,7 +48,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-verilog.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+    body { font-family: "IBM Plex Sans", "Segoe UI", sans-serif; }
     .code-editor { font-family: "Fira Code", "Courier New", monospace; tab-size: 4; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: #111827; }
@@ -149,6 +150,52 @@
       header .text-gray-500, header button span { display: none; }
       aside { width: 240px !important; }
       .w-80 { width: 230px !important; }
+    }
+
+    /* Keep the workbench dense and legible at laptop widths. */
+    header { min-height: 64px; }
+    header > div:first-child { min-width: 190px; }
+    header .rounded-full { border-radius: 5px !important; padding: 7px 10px !important; }
+    header button { min-height: 34px; }
+    aside { width: 276px !important; }
+    aside > div { padding: 15px !important; }
+    aside .space-y-2 > button { min-height: 52px; }
+    aside select { min-height: 36px; }
+    main > div:first-child > div { min-width: 0; }
+    main > div:first-child > div:nth-child(1), main > div:first-child > div:nth-child(2) { min-width: 290px; }
+    main > div:first-child > div:nth-child(3) { width: 292px !important; }
+    #rtl-editor, #tb-editor { padding: 12px !important; caret-color: var(--cyan); }
+    #rtl-editor::selection, #tb-editor::selection { background: rgba(67,217,223,.22); }
+    #schematic-container svg { max-width: 100%; min-height: 220px; }
+    #schematic-container svg text { font-size: 9px; }
+    #panel-term, #panel-wave, #panel-diag { border-top: 1px solid rgba(67,217,223,.08); }
+    #panel-wave > div:first-child { padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+    #diagnostics-content { max-width: 920px; margin: 0 auto; }
+    #diagnostics-content > div { box-shadow: 0 8px 24px rgba(0,0,0,.14); }
+    button { font-family: "IBM Plex Sans", "Segoe UI", sans-serif; }
+    button:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+    @media (max-width: 1120px) {
+      aside { width: 250px !important; }
+      main > div:first-child > div:nth-child(1), main > div:first-child > div:nth-child(2) { min-width: 250px; }
+      main > div:first-child > div:nth-child(3) { width: 250px !important; }
+      header .rounded-full .text-gray-500 { display: none; }
+    }
+    @media (max-width: 760px) {
+      body { overflow: auto !important; }
+      header { height: auto !important; min-height: 64px; gap: 10px; }
+      header > div:last-child { gap: 6px; }
+      header .rounded-full { display: none; }
+      header button span { display: none; }
+      header button { padding: 8px !important; }
+      body > div:last-of-type { flex-direction: column; overflow: visible; }
+      aside { width: 100% !important; max-height: none; }
+      main { min-height: 900px; overflow: visible; }
+      main > div:first-child { flex-direction: column; overflow: visible; }
+      main > div:first-child > div { min-height: 320px; }
+      main > div:first-child > div:nth-child(3) { width: 100% !important; min-height: 280px; }
+      .h-72 { height: 300px !important; }
+      #bottom-tab-term, #bottom-tab-wave, #bottom-tab-diag { padding-left: 8px; padding-right: 8px; }
+      #bottom-tab-term span, #bottom-tab-wave span, #bottom-tab-diag span { display: none; }
     }
   </style>
 </head>
@@ -415,6 +462,10 @@
     let bottomTab = "term";
     let ws = null;
     let simulatorAvailable = false;
+    let latestSimulationLog = "";
+    let latestWaveform = null;
+    let generatedTestbench = "";
+    let generatedSva = "";
 
     // Initialize
     document.addEventListener("DOMContentLoaded", async () => {
@@ -554,11 +605,13 @@
         const res = await fetch("/api/generate-test", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code, spec })
+          body: JSON.stringify({ code, module_name: currentModule, spec })
         });
         const data = await res.json();
-        
-        document.getElementById("tb-editor").value = data.testbench;
+        if (!res.ok) throw new Error(data.detail || "Testbench generation failed");
+        generatedTestbench = data.testbench || "";
+        generatedSva = data.sva_assertion || "No SVA assertion was generated for this specification.";
+        document.getElementById("tb-editor").value = rightTab === "sva" ? generatedSva : generatedTestbench;
         badge.textContent = "Generated";
         badge.className = "text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 font-mono";
       } catch (err) {
@@ -577,6 +630,8 @@
         return;
       }
       progress.classList.remove("hidden");
+      latestSimulationLog = "";
+      latestWaveform = null;
 
       term.innerHTML = `<span class="text-cyan-400">[EDA-AGENT]</span> Initializing WebSocket verification session...\n`;
 
@@ -601,12 +656,14 @@
 
       ws.onmessage = (event) => {
         const msg = JSON.parse(event.data);
+        if (msg.stdout) latestSimulationLog += `\n${msg.stdout}`;
         if (msg.event === "start") {
           term.innerHTML += `\n<span class="text-yellow-400">⚡ ${msg.message}</span>\n`;
         } else if (msg.event === "iteration") {
           const color = msg.success ? "text-emerald-400" : "text-rose-400";
           term.innerHTML += `\n<span class="${color}">[ITERATION ${msg.iteration}] Action: ${msg.action} | Pass Rate: ${msg.pass_rate}%</span>\n${msg.stdout}\n`;
         } else if (msg.event === "waveform") {
+          latestWaveform = msg.wavedrom;
           renderWaveDromData(msg.wavedrom);
         } else if (msg.event === "complete") {
           progress.classList.add("hidden");
@@ -652,54 +709,38 @@
         head: { text: "Digital Waveform Capture" },
         foot: { tick: 0 }
       };
-      renderWaveDromData(sampleWave);
+      renderWaveDromData(latestWaveform || sampleWave);
     }
 
     async function autoFixRTL() {
       switchBottomTab('term');
       const term = document.getElementById("terminal-output");
-      term.innerHTML += `\n<span class="text-purple-400 font-bold">🛠️ [AUTO-FIX] Initiating closed-loop diagnostic repair on RTL...</span>\n`;
       runVerification();
+      term.innerHTML += `\n<span class="text-purple-400 font-bold">[AUTO-FIX] Closed-loop diagnostic repair started.</span>\n`;
     }
 
     async function explainFailure() {
       switchBottomTab('diag');
       const diagContainer = document.getElementById("diagnostics-content");
-      diagContainer.innerHTML = `
-        <div class="space-y-3">
-          <div class="p-3 bg-eda-card rounded border border-eda-border">
-            <span class="text-xs font-bold text-amber-400 uppercase tracking-wider block mb-1">Digital Engineering Root Cause</span>
-            <p class="text-gray-300">Assertion failure at Clock Cycle #124 (T = 1241.00 ns). Output combinational settling mismatch observed on signal <code class="text-cyan-400">result</code>: Expected <code class="text-emerald-400">0x00</code>, but observed <code class="text-rose-400">0x100</code> during Opcode 0 (ADD).</p>
-          </div>
-          <div class="p-3 bg-eda-card rounded border border-eda-border">
-            <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider block mb-1">Recommended Hardware Fix</span>
-            <p class="text-gray-300">Mask carry overflow bits to 8-bit boundary (<code class="text-cyan-400">(a + b) & 8'hFF</code>) and check synchronous reset deassertion.</p>
-          </div>
-        </div>
-      `;
+      diagContainer.innerHTML = '<div class="p-4 text-gray-400">Analyzing latest simulation output...</div>';
+      try {
+        const res = await fetch('/api/diagnose', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ log: latestSimulationLog || 'No simulation output is available yet.', code: document.getElementById('rtl-editor').value }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Diagnostic analysis failed');
+        diagContainer.innerHTML = `<div class="space-y-3"><div class="p-3 bg-eda-card rounded border border-eda-border"><span class="text-xs font-bold text-amber-400 uppercase tracking-wider block mb-1">Digital Engineering Root Cause</span><p class="text-gray-300">${data.engineering_summary}</p></div><div class="p-3 bg-eda-card rounded border border-eda-border"><span class="text-xs font-bold text-emerald-400 uppercase tracking-wider block mb-1">Hardware Diagnosis</span><p class="text-gray-300">${data.hardware_diagnosis}</p></div><pre class="p-3 bg-black/60 text-gray-400 overflow-x-auto">${data.raw_error || 'No raw error captured.'}</pre></div>`;
+      } catch (err) { diagContainer.innerHTML = `<div class="p-4 text-rose-400">${err.message}</div>`; }
     }
 
     async function analyzeTiming() {
       switchBottomTab('diag');
       const diagContainer = document.getElementById("diagnostics-content");
-      diagContainer.innerHTML = `
-        <div class="space-y-3">
-          <div class="grid grid-cols-2 gap-3">
-            <div class="p-3 bg-eda-card rounded border border-rose-900/50">
-              <span class="text-[10px] text-gray-400 uppercase block">Worst Negative Slack (WNS)</span>
-              <span class="text-lg font-bold text-rose-400 font-mono">-0.450 ns (VIOLATED)</span>
-            </div>
-            <div class="p-3 bg-eda-card rounded border border-rose-900/50">
-              <span class="text-[10px] text-gray-400 uppercase block">Total Negative Slack (TNS)</span>
-              <span class="text-lg font-bold text-rose-400 font-mono">-2.850 ns (VIOLATED)</span>
-            </div>
-          </div>
-          <div class="p-3 bg-eda-card rounded border border-eda-border">
-            <span class="text-xs font-bold text-cyan-400 uppercase tracking-wider block mb-1">Suggested RTL Pipeline Modification</span>
-            <pre class="bg-black/60 p-2.5 rounded font-mono text-xs text-gray-300 overflow-x-auto">+ reg [DATA_WIDTH-1:0] reg_stage1;\n+ always @(posedge clk) begin\n+     reg_stage1 <= partial_logic(a);\n+     result     <= final_logic(reg_stage1);\n+ end</pre>
-          </div>
-        </div>
-      `;
+      diagContainer.innerHTML = '<div class="p-4 text-gray-400">Parsing latest timing output...</div>';
+      try {
+        const res = await fetch('/api/timing', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ log: latestSimulationLog }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'STA analysis failed');
+        diagContainer.innerHTML = `<div class="space-y-3"><div class="grid grid-cols-2 gap-3"><div class="p-3 bg-eda-card rounded border border-eda-border"><span class="text-[10px] text-gray-400 uppercase block">Setup WNS</span><span class="text-lg font-bold font-mono">${data.wns_setup} ns</span></div><div class="p-3 bg-eda-card rounded border border-eda-border"><span class="text-[10px] text-gray-400 uppercase block">Setup TNS</span><span class="text-lg font-bold font-mono">${data.tns_setup} ns</span></div></div><div class="p-3 text-cyan-300">Timing status: ${data.is_clean ? 'CLEAN' : 'VIOLATED'}</div>${(data.recommendations || []).map(item => `<div class="p-3 bg-eda-card rounded border border-eda-border text-gray-300">${item}</div>`).join('')}</div>`;
+      } catch (err) { diagContainer.innerHTML = `<div class="p-4 text-rose-400">${err.message}</div>`; }
     }
 
     function switchRightTab(tab) {
@@ -713,6 +754,7 @@
         tabSva.className = "px-2.5 py-1 rounded font-semibold text-purple-400 bg-purple-950 border border-purple-800 flex items-center space-x-1";
         tabTb.className = "px-2.5 py-1 rounded text-gray-400 hover:text-white flex items-center space-x-1";
       }
+      document.getElementById("tb-editor").value = tab === "sva" ? (generatedSva || "Generate a testbench with a specification first.") : generatedTestbench;
     }
 
     function switchBottomTab(tab) {
@@ -725,9 +767,7 @@
       document.getElementById("bottom-tab-wave").className = tab === 'wave' ? "px-3 py-1 font-semibold text-emerald-400 bg-emerald-950 border-b-2 border-emerald-400 flex items-center space-x-1.5" : "px-3 py-1 text-gray-400 hover:text-white flex items-center space-x-1.5";
       document.getElementById("bottom-tab-diag").className = tab === 'diag' ? "px-3 py-1 font-semibold text-amber-400 bg-amber-950 border-b-2 border-amber-400 flex items-center space-x-1.5" : "px-3 py-1 text-gray-400 hover:text-white flex items-center space-x-1.5";
 
-      if (tab === 'wave') {
-        renderSampleWaveform();
-      }
+      if (tab === 'wave' && latestWaveform) renderWaveDromData(latestWaveform);
     }
 
     function setSpecPreset(text) {
@@ -736,12 +776,23 @@
     }
 
     function exportTestbench() {
-      const content = document.getElementById("tb-editor").value;
+      const content = generatedTestbench || document.getElementById("tb-editor").value;
       const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = `test_${currentModule}.py`;
       a.click();
+    }
+
+    async function updateProviderConfig() {
+      const provider = document.getElementById('llm-provider-select').value;
+      try {
+        const res = await fetch('/api/config/provider', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ provider }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Provider update failed');
+        document.getElementById('header-llm-label').textContent = `${data.llm_provider.toUpperCase()}: ${data.llm_model}`;
+        document.getElementById('base-url-label').textContent = `Endpoint: ${data.llm_base_url}`;
+      } catch (err) { document.getElementById('terminal-output').innerHTML += `\n<span class="text-rose-400">[CONFIG ERROR] ${err.message}</span>\n`; }
     }
   </script>
 </body>
