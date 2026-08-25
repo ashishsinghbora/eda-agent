@@ -18,6 +18,10 @@ export function useWebSocketVerify() {
   const [wavedromData, setWavedromData] = useState<any>(null);
   const [resultSummary, setResultSummary] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+
+
+    
 
   const startVerification = useCallback((rtlCode: string, moduleName: string, maxRetries = 3) => {
     setIsRunning(true);
@@ -28,6 +32,11 @@ export function useWebSocketVerify() {
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.host || "localhost:8000";
     const ws = new WebSocket(`${proto}//${host}/ws/verify`);
+    const handleRetry = () => {
+      if (retryCount < maxRetries) {
+        setRetryCount((prev) => prev + 1);
+      }
+    };
     wsRef.current = ws;
 
     ws.onopen = () => {

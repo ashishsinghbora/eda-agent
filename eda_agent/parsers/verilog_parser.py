@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+from eda_agent.core import FileProcessor
 from eda_agent.schemas import (
     FSMStateSpec,  # alias or direct
     ModuleSpec,
@@ -15,7 +16,7 @@ from eda_agent.schemas import (
 )
 
 
-class VerilogParser:
+class VerilogParser(FileProcessor):
     """Advanced RTL parser for extracting module interfaces, parameters, and FSM states."""
 
     # Patterns for clock and reset signal names
@@ -45,10 +46,7 @@ class VerilogParser:
     def parse_file(cls, file_path: str | Path) -> List[ModuleSpec]:
         """Parse all modules found in an RTL source file."""
         path = Path(file_path)
-        if not path.is_file():
-            raise FileNotFoundError(f"RTL source file not found: {file_path}")
-
-        content = path.read_text(encoding="utf-8")
+        content = cls.read_input_file(file_path, "RTL source file")
         modules = cls.parse_string(content)
         for mod in modules:
             mod.source_file = str(path.resolve())

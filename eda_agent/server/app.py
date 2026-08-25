@@ -91,8 +91,10 @@ class TimingRequest(BaseModel):
 async def get_status() -> StatusResponse:
     """Return environment toolchain and local LLM configuration."""
     cfg = load_config()
-    iverilog_bin = shutil.which("iverilog") or shutil.which("iverilog", path=f"{Path.home()}/.local/bin:{shutil.which('iverilog') or ''}")
-    vvp_bin = shutil.which("vvp") or shutil.which("vvp", path=f"{Path.home()}/.local/bin:{shutil.which('vvp') or ''}")
+    local_bin = str(Path.home() / ".local" / "bin")
+    search_path = os.pathsep.join((local_bin, os.environ.get("PATH", "")))
+    iverilog_bin = shutil.which("iverilog", path=search_path)
+    vvp_bin = shutil.which("vvp", path=search_path)
     verilator_bin = shutil.which("verilator")
 
     return StatusResponse(
@@ -240,13 +242,19 @@ async def websocket_verify(websocket: WebSocket) -> None:
 
             # Stream each iteration record
             for record in result.iterations:
+                diagnostic_text = ""
+                if record.sim_result.diagnostics:
+                    diagnostic_text = record.sim_result.diagnostics.error_summary
+                iteration_output = record.sim_result.stdout[-1000:] if record.sim_result.stdout else ""
+                if diagnostic_text:
+                    iteration_output = f"{iteration_output}\n{diagnostic_text}".strip()
                 await websocket.send_json({
                     "event": "iteration",
                     "iteration": record.iteration,
                     "action": record.action,
                     "success": record.sim_result.success,
                     "pass_rate": record.sim_result.report.pass_rate_percent if record.sim_result.report else 0.0,
-                    "stdout": record.sim_result.stdout[-1000:] if record.sim_result.stdout else "",
+                    "stdout": iteration_output,
                 })
 
             # Check if VCD waveform was produced and format as WaveDrom

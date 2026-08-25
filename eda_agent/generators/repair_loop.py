@@ -100,7 +100,6 @@ class VerificationLoop:
 
         # 3. Closed-Loop Repair if simulation failed
         while not sim_res.success and attempts <= max_retries:
-            attempts += 1
             diagnostics = sim_res.diagnostics
 
             # If no diagnostics were generated, create fallback
@@ -112,6 +111,11 @@ class VerificationLoop:
                     raw_stderr=sim_res.stderr,
                     raw_stdout=sim_res.stdout
                 )
+
+            if "was not found on PATH" in diagnostics.error_summary:
+                break
+
+            attempts += 1
 
             repaired_code = self.generator.repair(
                 spec=spec,

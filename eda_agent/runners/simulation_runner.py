@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
+from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -52,8 +54,25 @@ class SimulationResult(BaseModel):
     waveform_path: Optional[str] = None
 
 
+class SimulationCommand(ABC):
+    """Polymorphic command builder for local simulation backends."""
+
+    @abstractmethod
+    def build(self, clean: bool = False) -> List[str]:
+        """Return the executable command for a simulation operation."""
+
+
+class MakeSimulationCommand(SimulationCommand):
+    """Build GNU Make commands used by the cocotb simulation Makefile."""
+
+    def build(self, clean: bool = False) -> List[str]:
+        return ["make", "clean"] if clean else ["make"]
+
+
 class SimulationRunner:
     """Runner for cocotb simulations with automated failure diagnosis."""
+
+    command: SimulationCommand = MakeSimulationCommand()
 
     @classmethod
     def run(
@@ -76,7 +95,7 @@ class SimulationRunner:
         py_bin_dir = str(Path(sys.executable).parent)
         user_local_bin = str(Path.home() / ".local" / "bin")
         current_path = env.get("PATH", "")
-        env["PATH"] = f"{py_bin_dir}:{user_local_bin}:{current_path}"
+        env["PATH"] = os.pathsep.join((py_bin_dir, user_local_bin, current_path))
         env["COCOTB_IGNORE_PYTHON_REQUIRES"] = "1"
         env["SIM"] = simulator
         env["WAVES"] = "1" if waves else "0"
@@ -92,12 +111,22 @@ class SimulationRunner:
 
         start_time = time.time()
 
-        if clean:
-            subprocess.run(["make", "clean"], cwd=str(work_path), env=env, capture_output=True, text=True)
-
         try:
+            executable = cls.command.build()[0]
+            if shutil.which(executable, path=env["PATH"]) is None:
+                raise FileNotFoundError(executable)
+
+            if clean:
+                subprocess.run(
+                    cls.command.build(clean=True),
+                    cwd=str(work_path),
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                )
+
             proc = subprocess.run(
-                ["make"],
+                cls.command.build(),
                 cwd=str(work_path),
                 env=env,
                 capture_output=True,
@@ -114,6 +143,16 @@ class SimulationRunner:
             stdout = exc.stdout.decode() if isinstance(exc.stdout, bytes) else (exc.stdout or "")
             stderr = f"Simulation timed out after {timeout} seconds."
             exit_code = -1
+
+        except FileNotFoundError as exc:
+            duration = round(time.time() - start_time, 3)
+            missing_command = exc.filename or cls.command.build()[0]
+            stdout = ""
+            stderr = (
+                f"Unable to start simulation: '{missing_command}' was not found on PATH. "
+                "Install GNU Make and Icarus Verilog, then restart the EDA-Agent server."
+            )
+            exit_code = 127
 
         # Search for results.xml
         candidates = [
@@ -174,6 +213,15 @@ class SimulationRunner:
             return SimulationDiagnostics(
                 failure_type=FailureType.TIMEOUT,
                 error_summary="Simulation exceeded timeout threshold (potential deadlock or hang).",
+                raw_stderr=stderr,
+                raw_stdout=stdout
+            )
+
+        # Missing make/simulator binaries on local development machines.
+        if "was not found on PATH" in combined_logs:
+            return SimulationDiagnostics(
+                failure_type=FailureType.COMPILATION_ERROR,
+                error_summary=stderr.strip(),
                 raw_stderr=stderr,
                 raw_stdout=stdout
             )

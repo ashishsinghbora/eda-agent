@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 from typing import Optional
+from eda_agent.core import LLMBackedComponent
 from eda_agent.schemas import ModuleSpec
 from eda_agent.runners.simulation_runner import SimulationDiagnostics
 from .llm_client import BaseLLMClient, get_llm_client
@@ -15,13 +16,13 @@ from .prompt_templates import (
 )
 
 
-class TestbenchGenerator:
+class TestbenchGenerator(LLMBackedComponent):
     """Orchestrates testbench synthesis and diagnostic-driven repair."""
 
     __test__ = False  # Prevent pytest from collecting this class as a test suite
 
     def __init__(self, llm_client: Optional[BaseLLMClient] = None):
-        self.llm_client = llm_client or get_llm_client()
+        super().__init__(llm_client or get_llm_client())
 
     @staticmethod
     def extract_python_code(text: str) -> str:

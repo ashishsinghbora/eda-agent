@@ -58,7 +58,7 @@ class CocotbRunner:
         py_bin_dir = str(Path(sys.executable).parent)
         user_local_bin = str(Path.home() / ".local" / "bin")
         current_path = env.get("PATH", "")
-        env["PATH"] = f"{py_bin_dir}:{user_local_bin}:{current_path}"
+        env["PATH"] = os.pathsep.join((py_bin_dir, user_local_bin, current_path))
 
         env["SIM"] = simulator
         env["WAVES"] = "1" if waves else "0"

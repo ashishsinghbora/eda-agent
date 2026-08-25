@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
+from eda_agent.core import DiagnosticProcessor
 from eda_agent.schemas import ModuleSpec
 
 
@@ -26,7 +27,7 @@ class HardwareFailureDiagnosis(BaseModel):
     hardware_diagnosis: str = Field(description="Hardware root-cause analysis and recommended RTL fix")
 
 
-class HumanDiagnosticsTranslator:
+class HumanDiagnosticsTranslator(DiagnosticProcessor):
     """Translates simulator errors and assertion failures into digital hardware engineering diagnostics."""
 
     @classmethod
