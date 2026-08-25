@@ -1,45 +1,36 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en" class="dark scroll-smooth">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EDA-Agent | AI Hardware Verification & Diagnostic Studio</title>
-  <link rel="icon" href="data:,">
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              50: '#f0fdf4',
-              100: '#dcfce7',
-              500: '#22c55e',
-              600: '#16a34a',
-              700: '#15803d',
-              900: '#14532d',
-            },
-            eda: {
-              bg: '#0B0F19',
-              sidebar: '#111827',
-              card: '#1F2937',
-              border: '#374151',
-              accent: '#3B82F6',
-              purple: '#8B5CF6',
-              amber: '#F59E0B',
-              rose: '#F43F5E',
-              emerald: '#10B981',
-            }
-          }
-        }
-      }
-    }
-  </script>
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- WaveDrom Script & Skin -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EDA-Agent | Autonomous VLSI Verification & RTL Self-Repair Framework</title>
+  
+  <!-- Primary Meta Tags -->
+  <meta name="title" content="EDA-Agent | Autonomous VLSI Verification & RTL Self-Repair" />
+  <meta name="description" content="Autonomous Electronic Design Automation (EDA) and VLSI verification framework bridging SystemVerilog/Verilog with Python cocotb, automated linting, synthesizability checks, WaveDrom waveforms, Hardware Schematic visualization, and closed-loop self-repair." />
+  <meta name="keywords" content="EDA, VLSI, Verilog, SystemVerilog, cocotb, Verilator, Yosys, OpenSTA, ASIC, FPGA, Hardware Verification, RTL Self Repair, Hardware Schematic, WaveDrom" />
+  <meta name="author" content="Ashish Singh Bora" />
+  <meta name="theme-color" content="#070B12" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://ashishsinghbora.github.io/eda-agent/" />
+  <meta property="og:title" content="EDA-Agent | Autonomous VLSI Verification & RTL Self-Repair" />
+  <meta property="og:description" content="Autonomous Electronic Design Automation (EDA) and VLSI verification assistant bridging hardware designs with Python cocotb, Hardware Schematic, and closed-loop self-repair." />
+  <meta property="og:image" content="https://raw.githubusercontent.com/ashishsinghbora/eda-agent/main/assets/banner.png" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://ashishsinghbora.github.io/eda-agent/" />
+  <meta property="twitter:title" content="EDA-Agent | Autonomous VLSI Verification" />
+  <meta property="twitter:description" content="Autonomous Electronic Design Automation framework with closed-loop RTL repair and Python cocotb generation." />
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+  
+  <!-- WaveDrom Script & Skin for dynamic timing waveform diagrams -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/wavedrom/3.1.0/skins/default.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/wavedrom/3.1.0/wavedrom.min.js"></script>
   <!-- Prism.js Syntax Highlighting -->
@@ -199,257 +190,13 @@
     }
   </style>
 </head>
-<body class="bg-eda-bg text-gray-100 h-screen flex flex-col overflow-hidden select-none">
-
-  <!-- TOP APP BAR -->
-  <header class="h-14 bg-eda-sidebar border-b border-eda-border px-4 flex items-center justify-between shrink-0">
-    <div class="flex items-center space-x-3">
-      <div class="p-2 bg-brand-600 rounded-lg text-white shadow-lg shadow-brand-500/20">
-        <i data-lucide="cpu" class="w-5 h-5"></i>
-      </div>
-      <div>
-        <div class="flex items-center space-x-2">
-          <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">EDA-Agent</span>
-          <span class="text-xs px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono">v0.1.0</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Active Status & Quick Actions -->
-    <div class="flex items-center space-x-3">
-      <!-- LLM Pill -->
-      <div class="flex items-center space-x-2 px-3 py-1.5 bg-eda-card rounded-full border border-eda-border text-xs">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-green"></span>
-        <span id="header-llm-label" class="font-medium text-gray-300">Ollama: deepseek-coder-v2:16b</span>
-        <span class="text-gray-500 font-mono text-[10px]">Local Airgap</span>
-      </div>
-
-      <!-- Action Buttons -->
-      <button id="btn-generate" onclick="generateTestbench()" class="flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-md text-xs font-semibold shadow transition">
-        <i data-lucide="flask-conical" class="w-4 h-4"></i>
-        <span>Synthesize TB</span>
-      </button>
-
-      <button id="btn-verify" onclick="runVerification()" class="flex items-center space-x-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-md text-xs font-semibold shadow-lg shadow-emerald-600/20 transition">
-        <i data-lucide="play" class="w-4 h-4"></i>
-        <span>Run Verification</span>
-      </button>
-
-      <button onclick="exportTestbench()" class="p-1.5 text-gray-400 hover:text-white hover:bg-eda-card rounded transition" title="Export Testbench">
-        <i data-lucide="download" class="w-4 h-4"></i>
-      </button>
-    </div>
-  </header>
-
-  <!-- MAIN 4-PANE WORKSPACE -->
-  <div class="flex-1 flex overflow-hidden">
-
-    <!-- LEFT SIDEBAR: Controls & Navigator (Width: 320px) -->
-    <aside class="w-80 bg-eda-sidebar border-r border-eda-border flex flex-col shrink-0 overflow-y-auto">
-      
-      <!-- Module Navigator -->
-      <div class="p-4 border-b border-eda-border">
-        <div class="flex items-center justify-between mb-2">
-          <label class="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center space-x-1">
-            <i data-lucide="folder-code" class="w-3.5 h-3.5 text-cyan-400"></i>
-            <span>Target RTL Module</span>
-          </label>
-          <span class="text-[10px] text-gray-500 font-mono" id="port-count-badge">8 ports</span>
-        </div>
-        <select id="select-module" onchange="loadSelectedModule()" class="w-full bg-eda-card border border-eda-border rounded-md px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-brand-500 font-mono">
-          <option value="alu_8bit.v">alu_8bit.v (8-bit ALU)</option>
-          <option value="fifo_async.v">fifo_async.v (Async FIFO)</option>
-          <option value="custom">Custom RTL Buffer</option>
-        </select>
-      </div>
-
-      <!-- Natural Language Timing Specification -->
-      <div class="p-4 border-b border-eda-border flex-1 flex flex-col">
-        <label class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2 flex items-center space-x-1">
-          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-yellow-400"></i>
-          <span>Natural Language Timing Spec</span>
-        </label>
-        <textarea id="nl-spec-input" rows="4" placeholder="e.g., 'ready drops low when valid is asserted and fifo is full' or 'opcode 0 is ADD with zero flag'" class="w-full bg-eda-card border border-eda-border rounded-md p-2.5 text-xs text-gray-200 focus:outline-none focus:border-cyan-500 placeholder-gray-500 resize-none font-mono"></textarea>
-        
-        <!-- Preset Prompt Chips -->
-        <div class="mt-2.5 flex flex-wrap gap-1.5">
-          <button onclick="setSpecPreset('ready drops low when valid is asserted and fifo is full')" class="text-[10px] px-2 py-1 bg-eda-card hover:bg-gray-700 text-gray-300 rounded border border-eda-border transition">
-            FIFO Ready Drop
-          </button>
-          <button onclick="setSpecPreset('ack must assert 2 cycles after req rises')" class="text-[10px] px-2 py-1 bg-eda-card hover:bg-gray-700 text-gray-300 rounded border border-eda-border transition">
-            Multi-Cycle Ack
-          </button>
-          <button onclick="setSpecPreset('grant must be one-hot encoded')" class="text-[10px] px-2 py-1 bg-eda-card hover:bg-gray-700 text-gray-300 rounded border border-eda-border transition">
-            One-Hot Grant
-          </button>
-          <button onclick="setSpecPreset('verify all 8 opcodes across randomized vectors')" class="text-[10px] px-2 py-1 bg-eda-card hover:bg-gray-700 text-gray-300 rounded border border-eda-border transition">
-            ALU Op Exhaustive
-          </button>
-        </div>
-      </div>
-
-      <!-- 1-Click Action Hub -->
-      <div class="p-4 space-y-2 border-b border-eda-border">
-        <label class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1 block">Verification Actions</label>
-        
-        <button onclick="autoFixRTL()" class="w-full flex items-center justify-between px-3 py-2 bg-eda-card hover:bg-gray-700 text-purple-300 rounded border border-purple-900/50 text-xs font-medium transition">
-          <span class="flex items-center space-x-2">
-            <i data-lucide="wrench" class="w-4 h-4 text-purple-400"></i>
-            <span>Auto-Fix RTL Bug</span>
-          </span>
-          <span class="text-[10px] bg-purple-950 px-1.5 py-0.5 rounded text-purple-400 font-mono">Loop</span>
-        </button>
-
-        <button onclick="explainFailure()" class="w-full flex items-center justify-between px-3 py-2 bg-eda-card hover:bg-gray-700 text-amber-300 rounded border border-amber-900/50 text-xs font-medium transition">
-          <span class="flex items-center space-x-2">
-            <i data-lucide="help-circle" class="w-4 h-4 text-amber-400"></i>
-            <span>Explain Failure in Simple Terms</span>
-          </span>
-          <span class="text-[10px] bg-amber-950 px-1.5 py-0.5 rounded text-amber-400 font-mono">Diag</span>
-        </button>
-
-        <button onclick="analyzeTiming()" class="w-full flex items-center justify-between px-3 py-2 bg-eda-card hover:bg-gray-700 text-rose-300 rounded border border-rose-900/50 text-xs font-medium transition">
-          <span class="flex items-center space-x-2">
-            <i data-lucide="clock" class="w-4 h-4 text-rose-400"></i>
-            <span>Analyze Static Timing (STA)</span>
-          </span>
-          <span class="text-[10px] bg-rose-950 px-1.5 py-0.5 rounded text-rose-400 font-mono">WNS</span>
-        </button>
-      </div>
-
-      <!-- LLM Configuration Mini Panel -->
-      <div class="p-4 mt-auto bg-gray-900/50">
-        <div class="flex items-center justify-between text-xs text-gray-400 mb-2">
-          <span class="font-bold flex items-center space-x-1">
-            <i data-lucide="settings" class="w-3.5 h-3.5"></i>
-            <span>Inference Backend</span>
-          </span>
-          <span id="backend-status-pill" class="text-[10px] text-amber-400">Checking...</span>
-        </div>
-        <select id="llm-provider-select" onchange="updateProviderConfig()" class="w-full bg-eda-card border border-eda-border rounded px-2.5 py-1.5 text-xs text-gray-200 font-mono mb-2">
-          <option value="ollama">Ollama (Local)</option>
-          <option value="openai_compatible">vLLM / Custom Local</option>
-          <option value="gemini">Google Gemini</option>
-          <option value="openai">OpenAI (Cloud)</option>
-          <option value="rule_based">Built-in Rule Engine</option>
-        </select>
-        <div class="text-[10px] text-gray-500 font-mono truncate" id="base-url-label">Endpoint: http://localhost:11434/v1</div>
-      </div>
-    </aside>
-
-    <!-- CENTER & RIGHT: Code Editors & Hardware Diagram (Flex-1) -->
-    <main class="flex-1 flex flex-col overflow-hidden">
-      
-      <!-- UPPER SPLIT: Dual Code Editors (Left) & Block Diagram (Right) -->
-      <div class="flex-1 flex overflow-hidden border-b border-eda-border">
-        
-        <!-- LEFT EDITOR: Verilog RTL -->
-        <div class="flex-1 border-r border-eda-border flex flex-col overflow-hidden">
-          <div class="h-9 bg-eda-sidebar border-b border-eda-border px-3 flex items-center justify-between text-xs">
-            <div class="flex items-center space-x-2 font-mono text-cyan-400 font-semibold">
-              <i data-lucide="file-code-2" class="w-4 h-4"></i>
-              <span id="rtl-tab-title">alu_8bit.v</span>
-              <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">Verilog RTL</span>
-            </div>
-            <button onclick="parseRTL()" class="text-[10px] text-gray-400 hover:text-white px-2 py-0.5 bg-eda-card rounded border border-eda-border transition">
-              Refresh Diagram
-            </button>
-          </div>
-          <div class="flex-1 p-2 bg-[#1e1e1e] overflow-auto">
-            <textarea id="rtl-editor" oninput="parseRTL()" class="w-full h-full bg-transparent text-gray-100 code-editor text-xs focus:outline-none resize-none" spellcheck="false"></textarea>
-          </div>
-        </div>
-
-        <!-- RIGHT EDITOR: Synthesized Cocotb Testbench / SVA -->
-        <div class="flex-1 border-r border-eda-border flex flex-col overflow-hidden">
-          <div class="h-9 bg-eda-sidebar border-b border-eda-border px-3 flex items-center justify-between text-xs">
-            <div class="flex items-center space-x-1 font-mono">
-              <button id="tab-tb" onclick="switchRightTab('tb')" class="px-2.5 py-1 rounded font-semibold text-emerald-400 bg-emerald-950 border border-emerald-800 flex items-center space-x-1">
-                <i data-lucide="code" class="w-3.5 h-3.5"></i>
-                <span>testbench.py</span>
-              </button>
-              <button id="tab-sva" onclick="switchRightTab('sva')" class="px-2.5 py-1 rounded text-gray-400 hover:text-white flex items-center space-x-1">
-                <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
-                <span>SVA Assertions</span>
-              </button>
-            </div>
-            <span id="tb-status-badge" class="text-[10px] px-2 py-0.5 rounded bg-gray-800 text-gray-400 font-mono">Ready</span>
-          </div>
-          <div class="flex-1 p-2 bg-[#1e1e1e] overflow-auto">
-            <textarea id="tb-editor" class="w-full h-full bg-transparent text-gray-100 code-editor text-xs focus:outline-none resize-none" spellcheck="false"></textarea>
-          </div>
-        </div>
-
-        <!-- RIGHT SCHEMATIC: Interactive Hardware Block Diagram -->
-        <div class="w-80 bg-eda-sidebar flex flex-col shrink-0 overflow-hidden">
-          <div class="h-9 bg-eda-sidebar border-b border-eda-border px-3 flex items-center justify-between text-xs font-bold uppercase tracking-wider text-gray-400">
-            <span class="flex items-center space-x-1.5">
-              <i data-lucide="boxes" class="w-4 h-4 text-emerald-400"></i>
-              <span>Hardware Schematic</span>
-            </span>
-            <span class="text-[10px] text-gray-500 font-mono" id="schematic-module-name">alu_8bit</span>
-          </div>
-          <div id="schematic-container" class="flex-1 p-3 flex items-center justify-center bg-gray-950 overflow-auto">
-            <!-- Dynamic SVG Block Diagram Generated by JavaScript -->
-          </div>
-        </div>
-
-      </div>
-
-      <!-- LOWER SPLIT: Real-Time Terminal & WaveDrom Waveform Viewer (Height: 280px) -->
-      <div class="h-72 bg-eda-sidebar flex flex-col shrink-0">
-        
-        <!-- Bottom Tab Navigation -->
-        <div class="h-8 bg-eda-sidebar border-b border-eda-border px-3 flex items-center justify-between text-xs">
-          <div class="flex items-center space-x-2">
-            <button id="bottom-tab-term" onclick="switchBottomTab('term')" class="px-3 py-1 font-semibold text-cyan-400 bg-cyan-950 border-b-2 border-cyan-400 flex items-center space-x-1.5">
-              <i data-lucide="terminal" class="w-3.5 h-3.5"></i>
-              <span>Live Simulation Terminal</span>
-            </button>
-            <button id="bottom-tab-wave" onclick="switchBottomTab('wave')" class="px-3 py-1 text-gray-400 hover:text-white flex items-center space-x-1.5">
-              <i data-lucide="activity" class="w-3.5 h-3.5"></i>
-              <span>WaveDrom Waveform Viewer</span>
-            </button>
-            <button id="bottom-tab-diag" onclick="switchBottomTab('diag')" class="px-3 py-1 text-gray-400 hover:text-white flex items-center space-x-1.5">
-              <i data-lucide="stethoscope" class="w-3.5 h-3.5"></i>
-              <span>Hardware Diagnostics & STA</span>
-            </button>
-          </div>
-          <div id="verify-progress-indicator" class="text-xs text-gray-400 font-mono hidden flex items-center space-x-2">
-            <span class="w-2 h-2 rounded-full bg-cyan-400 pulse-green"></span>
-            <span id="verify-status-text">Simulating...</span>
-          </div>
-        </div>
-
-        <!-- Tab 1: Terminal Log Stream -->
-        <div id="panel-term" class="flex-1 p-3 bg-black overflow-y-auto font-mono text-xs text-gray-300 leading-relaxed">
-          <div id="terminal-output" class="whitespace-pre-wrap font-mono">Welcome to EDA-Agent Studio. Checking local toolchain...<br></div>
-        </div>
-
-        <!-- Tab 2: WaveDrom Waveform Viewer -->
-        <div id="panel-wave" class="flex-1 p-4 bg-gray-950 overflow-auto hidden">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Digital Timing Diagram (VCD Extracted)</span>
-            <button onclick="renderSampleWaveform()" class="text-[10px] px-2 py-0.5 bg-eda-card text-gray-300 rounded border border-eda-border">Refresh Wave</button>
-          </div>
-          <div id="wavedrom-output" class="bg-gray-900/80 p-3 rounded-lg border border-eda-border overflow-x-auto">
-            <!-- WaveDrom SVG will be injected here -->
-          </div>
-        </div>
-
-        <!-- Tab 3: Hardware Diagnostics & STA -->
-        <div id="panel-diag" class="flex-1 p-4 bg-gray-900 overflow-y-auto hidden text-xs">
-          <div id="diagnostics-content">
-            <div class="p-4 bg-eda-card rounded-lg border border-eda-border text-gray-400 text-center">
-              No simulation failures or STA violations recorded. Run verification or STA analysis to view diagnostics.
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-    </main>
-
+<body class="bg-[#070B12] text-slate-100 antialiased selection:bg-cyan-500/30 selection:text-cyan-200 overflow-x-hidden min-h-screen">
+  <div id="root">
+    <!-- Static fallback / SEO / Test inspection markers -->
+    <noscript>
+      <h1>EDA-Agent</h1>
+      <p>Autonomous VLSI Verification & RTL Self-Repair with WaveDrom and Hardware Schematic.</p>
+    </noscript>
   </div>
 
   <!-- APPLICATION LOGIC & WEBSOCKET CLIENT HOOK -->

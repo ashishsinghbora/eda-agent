@@ -1,0 +1,31 @@
+services:
+  eda-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: eda-agent:latest
+    container_name: eda-agent-studio
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/workspace
+      - eda_config:/home/edauser/.eda-agent
+    environment:
+      - PYTHONUNBUFFERED=1
+      - COCOTB_IGNORE_PYTHON_REQUIRES=1
+      # LLM Provider API Keys
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      # Local / Airgap Provider Configurations
+      - EDA_LLM_PROVIDER=${EDA_LLM_PROVIDER:-ollama}
+      - EDA_LLM_BASE_URL=${EDA_LLM_BASE_URL:-http://host.docker.internal:11434/v1}
+      - EDA_LLM_MODEL=${EDA_LLM_MODEL:-deepseek-coder-v2:16b}
+      - EDA_LLM_TEMPERATURE=${EDA_LLM_TEMPERATURE:-0.2}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: ["ui", "--host", "0.0.0.0", "--port", "8000"]
+
+volumes:
+  eda_config:

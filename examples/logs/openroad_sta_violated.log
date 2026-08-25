@@ -1,0 +1,70 @@
+==========================================================================
+OpenROAD Static Timing Analysis Report
+Design: alu_8bit
+Corner: typical
+==========================================================================
+
+Setup Timing Summary:
+---------------------
+Worst Negative Slack (WNS): -0.450 ns (VIOLATED)
+Total Negative Slack (TNS): -2.850 ns (VIOLATED)
+Number of Violating Paths: 2
+
+Hold Timing Summary:
+--------------------
+Worst Hold Slack (WNS): 0.120 ns (MET)
+Total Hold Slack (TNS): 0.000 ns (MET)
+
+--------------------------------------------------------------------------
+Path 1: max (Setup)
+--------------------------------------------------------------------------
+Startpoint: reg_a[7] (rising edge-triggered flip-flop clocked by clk)
+Endpoint: reg_result[7] (rising edge-triggered flip-flop clocked by clk)
+Path Group: clk
+Path Type: max
+
+  Point                                            Incr       Path
+  -----------------------------------------------------------------
+  clock clk (rise edge)                            0.000      0.000
+  clock network delay (ideal)                      0.000      0.000
+  reg_a[7]/CLK (DFF_X1)                            0.000      0.000
+  reg_a[7]/Q (DFF_X1)                              0.150      0.150 r
+  u_alu/adder_stage/carry_chain/sum[7] (NAND2_X1)  2.450      2.600 f
+  reg_result[7]/D (DFF_X1)                         0.100      2.700
+  data arrival time                                           2.700
+
+  clock clk (rise edge)                            2.000      2.000
+  clock network delay (ideal)                      0.000      2.000
+  clock uncertainty                               -0.100      1.900
+  clock reconvergence pessimism                    0.000      1.900
+  reg_result[7]/CLK (DFF_X1)                       0.000      1.900
+  library setup time                              -0.350      1.550
+  data required time                                          2.250
+  -----------------------------------------------------------------
+  data required time                                          2.250
+  data arrival time                                          -2.700
+  -----------------------------------------------------------------
+  slack (VIOLATED)                                           -0.450
+
+--------------------------------------------------------------------------
+Path 2: max (Setup)
+--------------------------------------------------------------------------
+Startpoint: reg_b[7] (rising edge-triggered flip-flop clocked by clk)
+Endpoint: reg_result[6] (rising edge-triggered flip-flop clocked by clk)
+Path Group: clk
+Path Type: max
+
+  Point                                            Incr       Path
+  -----------------------------------------------------------------
+  clock clk (rise edge)                            0.000      0.000
+  reg_b[7]/CLK (DFF_X1)                            0.000      0.000
+  reg_b[7]/Q (DFF_X1)                              0.150      0.150 r
+  u_alu/mult_stage/out[6] (AOI22_X1)               2.320      2.470 f
+  reg_result[6]/D (DFF_X1)                         0.100      2.570
+  data arrival time                                           2.570
+
+  clock clk (rise edge)                            2.000      2.000
+  library setup time                              -0.350      1.650
+  data required time                                          2.250
+  -----------------------------------------------------------------
+  slack (VIOLATED)                                           -0.320

@@ -167,19 +167,21 @@ class STAAnalyzer(FileProcessor):
             path_type = "setup" if pt_val in ("max", "setup") else "hold"
 
             # Slack extraction: take the final slack calculation line in the section
-            slack_matches = list(re.finditer(r'([+-]?\d+\.?\d*)\s+slack\s+\((VIOLATED|MET)\)', sec, re.IGNORECASE))
-            if slack_matches:
-                slack_m = slack_matches[-1]
+            slack_matches_pre = list(re.finditer(r'([+-]?\d+\.?\d*)\s+slack(?:\s+\((VIOLATED|MET)\))?', sec, re.IGNORECASE))
+            slack_matches_post = list(re.finditer(r'slack(?:\s+\((VIOLATED|MET)\))?\s*[:=]?\s*([+-]?\d+\.?\d*)', sec, re.IGNORECASE))
+
+            if slack_matches_post:
+                slack_m = slack_matches_post[-1]
+                slack_val = float(slack_m.group(2))
+                flag = (slack_m.group(1) or "").upper()
+                is_violated = (slack_val < 0.0) or (flag == "VIOLATED")
+            elif slack_matches_pre:
+                slack_m = slack_matches_pre[-1]
                 slack_val = float(slack_m.group(1))
-                is_violated = (slack_val < 0.0) or (slack_m.group(2).upper() == "VIOLATED")
+                flag = (slack_m.group(2) or "").upper()
+                is_violated = (slack_val < 0.0) or (flag == "VIOLATED")
             else:
-                # Alternative slack format
-                alt_matches = list(re.finditer(r'slack\s*[:=]?\s*([+-]?\d+\.?\d*)', sec, re.IGNORECASE))
-                if not alt_matches:
-                    continue
-                slack_m = alt_matches[-1]
-                slack_val = float(slack_m.group(1))
-                is_violated = (slack_val < 0.0) or ("VIOLATED" in sec.upper())
+                continue
 
             # Data arrival and required times
             arr_m = re.search(r'([+-]?\d+\.?\d*)\s+data\s+arrival\s+time', sec, re.IGNORECASE)
