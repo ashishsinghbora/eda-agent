@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 from typing import List, Optional
 from pydantic import BaseModel, Field, computed_field
+from eda_agent.core import FileProcessor
 
 
 class TimingPath(BaseModel):
@@ -51,7 +52,7 @@ class TimingReport(BaseModel):
         return not self.has_setup_violation and not self.has_hold_violation
 
 
-class STAAnalyzer:
+class STAAnalyzer(FileProcessor):
     """Parser for OpenROAD, OpenSTA, and Yosys timing reports with RTL repair advisor."""
 
     @classmethod
@@ -60,7 +61,7 @@ class STAAnalyzer:
         path = Path(file_path)
         if not path.is_file():
             raise FileNotFoundError(f"Timing log file not found: {file_path}")
-        content = path.read_text(encoding="utf-8")
+        content = cls.read_input_file(file_path, "Timing log file")
         return cls.parse_string(content)
 
     @classmethod

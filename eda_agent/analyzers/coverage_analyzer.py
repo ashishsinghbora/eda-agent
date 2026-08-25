@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import List, Optional
 from pydantic import BaseModel, Field
+from eda_agent.core import XMLProcessor
 
 
 class TestCaseResult(BaseModel):
@@ -38,7 +39,7 @@ class TestSuiteReport(BaseModel):
         return round((self.passed / self.tests) * 100.0, 2)
 
 
-class ResultsAnalyzer:
+class ResultsAnalyzer(XMLProcessor):
     """Parser and analyzer for cocotb simulation results."""
 
     @classmethod

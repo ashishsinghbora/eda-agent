@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EDA-Agent | AI Hardware Verification & Diagnostic Studio</title>
+  <link rel="icon" href="data:,">
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -55,6 +56,100 @@
     ::-webkit-scrollbar-thumb:hover { background: #4B5563; }
     .pulse-green { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+
+    /* Product surface: a focused hardware instrumentation console. */
+    :root {
+      --ink: #e8edf2;
+      --muted: #7f8c99;
+      --line: #25313b;
+      --panel: #111820;
+      --panel-raised: #17222b;
+      --canvas: #0a0f13;
+      --cyan: #43d9df;
+      --amber: #f6b84b;
+      --green: #72d69a;
+      --red: #f27d7d;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      background-color: var(--canvas) !important;
+      background-image:
+        linear-gradient(rgba(67, 217, 223, .035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(67, 217, 223, .035) 1px, transparent 1px),
+        radial-gradient(circle at 82% -10%, rgba(246, 184, 75, .09), transparent 32%),
+        radial-gradient(circle at 0% 100%, rgba(67, 217, 223, .06), transparent 28%);
+      background-size: 32px 32px, 32px 32px, auto, auto;
+      color: var(--ink) !important;
+      font-family: "Segoe UI", system-ui, sans-serif;
+    }
+    header {
+      height: 68px !important;
+      padding: 0 22px !important;
+      background: rgba(13, 19, 24, .94) !important;
+      border-color: var(--line) !important;
+      box-shadow: 0 1px 0 rgba(255,255,255,.03), 0 12px 30px rgba(0,0,0,.18);
+      position: relative;
+    }
+    header::after {
+      content: "";
+      position: absolute;
+      left: 0; right: 0; bottom: -1px; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--cyan), var(--amber), transparent);
+      opacity: .55;
+    }
+    header > div:first-child > div:first-child {
+      background: linear-gradient(145deg, #1e5961, #123238) !important;
+      border: 1px solid rgba(67,217,223,.38);
+      border-radius: 5px !important;
+      box-shadow: 0 0 24px rgba(67,217,223,.12) !important;
+    }
+    header .bg-gradient-to-r {
+      background-image: linear-gradient(90deg, var(--cyan), var(--amber)) !important;
+      letter-spacing: .01em;
+    }
+    header .bg-eda-card { background: rgba(23,34,43,.82) !important; border-color: #31404b !important; }
+    aside, main, .bg-eda-sidebar { background-color: rgba(13,19,24,.88) !important; }
+    aside { width: 292px !important; border-color: var(--line) !important; }
+    .border-eda-border, .border-b, .border-r { border-color: var(--line) !important; }
+    aside > div { padding: 18px !important; }
+    aside label, .uppercase { letter-spacing: .14em !important; font-size: 10px !important; }
+    select, textarea, #rtl-editor, #tb-editor {
+      background-color: rgba(18,28,36,.92) !important;
+      border-color: #2b3a45 !important;
+      color: var(--ink) !important;
+    }
+    select:focus, textarea:focus { border-color: var(--cyan) !important; box-shadow: 0 0 0 2px rgba(67,217,223,.1); }
+    aside button:not([id]) { transition: transform .18s ease, border-color .18s ease, background .18s ease; }
+    aside button:not([id]):hover { transform: translateX(3px); border-color: rgba(67,217,223,.5) !important; background: #1b2a34 !important; }
+    #btn-generate, #btn-verify { border-radius: 4px !important; letter-spacing: .02em; }
+    #btn-generate { background: #245d69 !important; border: 1px solid rgba(67,217,223,.45); }
+    #btn-verify { background: #b97822 !important; border: 1px solid rgba(246,184,75,.65); box-shadow: 0 0 20px rgba(246,184,75,.16) !important; }
+    #btn-generate:hover { background: #2f7883 !important; }
+    #btn-verify:hover { background: #d18a29 !important; }
+    .code-editor, #rtl-editor, #tb-editor, #terminal-output { font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace !important; }
+    #rtl-editor, #tb-editor { line-height: 1.65 !important; font-size: 12px !important; }
+    .bg-\[\#1e1e1e\] { background: #0d1419 !important; }
+    #schematic-container { background: rgba(7,12,16,.75) !important; position: relative; }
+    #schematic-container::before { content: "SIGNAL MAP / LIVE"; position: absolute; top: 12px; left: 14px; color: rgba(67,217,223,.55); font: 10px "Cascadia Code", monospace; letter-spacing: .14em; }
+    #schematic-container svg rect { fill: #15242b !important; stroke: var(--cyan) !important; }
+    #schematic-container svg text { font-family: "Cascadia Code", monospace; }
+    #schematic-container svg text:first-of-type { fill: var(--amber) !important; }
+    .h-72 { height: 260px !important; }
+    #panel-term { background: #050809 !important; color: #aebbc4 !important; }
+    #terminal-output { text-shadow: 0 0 12px rgba(67,217,223,.08); }
+    #panel-wave, #panel-diag { background: rgba(12,19,24,.94) !important; }
+    #wavedrom-output, #diagnostics-content > div { background: var(--panel) !important; border-color: var(--line) !important; border-radius: 5px !important; }
+    #verify-progress-indicator { color: var(--amber) !important; }
+    @keyframes consoleReveal { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    main > div:first-child { animation: consoleReveal .5s ease both; }
+    main > div:last-child { animation: consoleReveal .65s .08s ease both; }
+    @media (max-width: 900px) {
+      header { padding: 0 12px !important; }
+      header .text-gray-500, header button span { display: none; }
+      aside { width: 240px !important; }
+      .w-80 { width: 230px !important; }
+    }
   </style>
 </head>
 <body class="bg-eda-bg text-gray-100 h-screen flex flex-col overflow-hidden select-none">
@@ -182,7 +277,7 @@
             <i data-lucide="settings" class="w-3.5 h-3.5"></i>
             <span>Inference Backend</span>
           </span>
-          <span id="backend-status-pill" class="text-[10px] text-emerald-400">🟢 Ready</span>
+          <span id="backend-status-pill" class="text-[10px] text-amber-400">Checking...</span>
         </div>
         <select id="llm-provider-select" onchange="updateProviderConfig()" class="w-full bg-eda-card border border-eda-border rounded px-2.5 py-1.5 text-xs text-gray-200 font-mono mb-2">
           <option value="ollama">Ollama (Local)</option>
@@ -281,7 +376,7 @@
 
         <!-- Tab 1: Terminal Log Stream -->
         <div id="panel-term" class="flex-1 p-3 bg-black overflow-y-auto font-mono text-xs text-gray-300 leading-relaxed">
-          <div id="terminal-output" class="whitespace-pre-wrap font-mono">Welcome to EDA-Agent Studio. Ready for verification.<br><span class="text-emerald-400">[SYSTEM]</span> Simulator ready. LLM Provider configured.<br></div>
+          <div id="terminal-output" class="whitespace-pre-wrap font-mono">Welcome to EDA-Agent Studio. Checking local toolchain...<br></div>
         </div>
 
         <!-- Tab 2: WaveDrom Waveform Viewer -->
@@ -319,6 +414,7 @@
     let rightTab = "tb";
     let bottomTab = "term";
     let ws = null;
+    let simulatorAvailable = false;
 
     // Initialize
     document.addEventListener("DOMContentLoaded", async () => {
@@ -335,8 +431,24 @@
         document.getElementById("header-llm-label").textContent = `${data.llm_provider.toUpperCase()}: ${data.llm_model}`;
         document.getElementById("llm-provider-select").value = data.llm_provider;
         document.getElementById("base-url-label").textContent = `Endpoint: ${data.llm_base_url}`;
+        simulatorAvailable = Boolean(data.iverilog && data.vvp);
+        const statusPill = document.getElementById("backend-status-pill");
+        const verifyButton = document.getElementById("btn-verify");
+        const terminal = document.getElementById("terminal-output");
+        if (simulatorAvailable) {
+          statusPill.textContent = "Ready";
+          statusPill.className = "text-[10px] text-emerald-400";
+          terminal.innerHTML = `<span class="text-emerald-400">[SYSTEM]</span> Simulator ready. LLM Provider configured.<br>`;
+        } else {
+          statusPill.textContent = "Simulator unavailable";
+          statusPill.className = "text-[10px] text-rose-400";
+          verifyButton.title = "Install GNU Make and Icarus Verilog to enable verification";
+          terminal.innerHTML = `<span class="text-amber-400">[SYSTEM]</span> Synthesis and parsing ready.<br><span class="text-rose-400">[TOOLCHAIN]</span> GNU Make + Icarus Verilog are required for verification.<br>`;
+        }
       } catch (err) {
         console.warn("Status fetch failed", err);
+        document.getElementById("backend-status-pill").textContent = "Backend unavailable";
+        document.getElementById("backend-status-pill").className = "text-[10px] text-rose-400";
       }
     }
 
@@ -459,6 +571,11 @@
       switchBottomTab('term');
       const term = document.getElementById("terminal-output");
       const progress = document.getElementById("verify-progress-indicator");
+      if (!simulatorAvailable) {
+        progress.classList.add("hidden");
+        term.innerHTML = `<span class="text-rose-400 font-bold">[VERIFICATION BLOCKED]</span> Install GNU Make and Icarus Verilog, then restart the EDA-Agent server.\n`;
+        return;
+      }
       progress.classList.remove("hidden");
 
       term.innerHTML = `<span class="text-cyan-400">[EDA-AGENT]</span> Initializing WebSocket verification session...\n`;

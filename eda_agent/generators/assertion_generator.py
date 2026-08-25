@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from typing import List, Optional
 from pydantic import BaseModel, Field
+from eda_agent.core import LLMBackedComponent
 
 from eda_agent.generators.llm_client import LLMProvider, get_llm_client
 from eda_agent.schemas import ModuleSpec
@@ -21,13 +22,13 @@ class GeneratedAssertion(BaseModel):
     reset_signal: str = Field(default="rst_n", description="Reset signal associated with assertion")
 
 
-class AssertionGenerator:
+class AssertionGenerator(LLMBackedComponent):
     """Translates plain-English hardware specifications into SVA properties and cocotb checkers."""
 
     __test__ = False  # Prevent pytest collection
 
     def __init__(self, llm_client: Optional[LLMProvider] = None):
-        self.llm_client = llm_client or get_llm_client()
+        super().__init__(llm_client or get_llm_client())
 
     def generate(
         self,

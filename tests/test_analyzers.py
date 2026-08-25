@@ -52,3 +52,10 @@ def test_parse_failing_xml():
     assert report.pass_rate_percent == 50.0
     assert report.test_cases[1].passed is False
     assert "Assertion Error" in (report.test_cases[1].failure_message or "")
+
+
+
+with tempfile.NamedTemporaryFile("w", suffix=".xml", delete=False) as f:
+    f.write(SAMPLE_XML)
+    f_path = f.name
+    report = ResultsAnalyzer.parse_results_xml(f_path)

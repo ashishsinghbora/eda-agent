@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from pydantic import BaseModel, Field
+from eda_agent.core import FileProcessor
 
 
 class VCDVariable(BaseModel):
@@ -27,16 +28,13 @@ class VCDData(BaseModel):
     changes: Dict[str, List[Tuple[int, str]]] = Field(default_factory=dict)
 
 
-class VCDParser:
+class VCDParser(FileProcessor):
     """Pure-Python Value Change Dump (VCD) parser."""
 
     @classmethod
     def parse_file(cls, file_path: str | Path) -> VCDData:
         """Parse VCD from file."""
-        path = Path(file_path)
-        if not path.is_file():
-            raise FileNotFoundError(f"VCD file not found: {file_path}")
-        return cls.parse_string(path.read_text(encoding="utf-8", errors="replace"))
+        return cls.parse_string(cls.read_input_file(file_path, "VCD file"))
 
     @classmethod
     def parse_string(cls, content: str) -> VCDData:
